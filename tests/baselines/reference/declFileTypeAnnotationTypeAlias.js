@@ -34,12 +34,11 @@ module M {
 //// [declFileTypeAnnotationTypeAlias.js]
 var M;
 (function (M) {
-    M.x;
     var c = (function () {
         function c() {
         }
         return c;
-    })();
+    }());
     M.c = c;
     var m;
     (function (m) {
@@ -47,11 +46,10 @@ var M;
             function c() {
             }
             return c;
-        })();
+        }());
         m.c = c;
     })(m = M.m || (M.m = {}));
 })(M || (M = {}));
-var M;
 (function (M) {
     var N;
     (function (N) {
@@ -59,9 +57,8 @@ var M;
             function Window() {
             }
             return Window;
-        })();
+        }());
         N.Window = Window;
-        N.p;
     })(N = M.N || (M.N = {}));
 })(M || (M = {}));
 

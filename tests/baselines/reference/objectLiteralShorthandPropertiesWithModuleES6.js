@@ -16,9 +16,7 @@ module m {
 //// [objectLiteralShorthandPropertiesWithModuleES6.js]
 var m;
 (function (m) {
-    m.x;
 })(m || (m = {}));
-var m;
 (function (m) {
     var z = m.x;
     var y = {

@@ -1,4 +1,5 @@
 //// [bitwiseNotOperatorWithStringType.ts]
+
 // ~ operator on string type
 var STRING: string;
 var STRING1: string[] = ["", "abc"];
@@ -53,10 +54,9 @@ var A = (function () {
     }
     A.foo = function () { return ""; };
     return A;
-})();
+}());
 var M;
 (function (M) {
-    M.n;
 })(M || (M = {}));
 var objA = new A();
 // string type var

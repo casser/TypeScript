@@ -8,4 +8,6 @@ var b: a;
 
 
 //// [importDeclWithDeclareModifier.js]
+"use strict";
+exports.a = x.c;
 var b;

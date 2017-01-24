@@ -1,4 +1,5 @@
 //// [bitwiseNotOperatorWithBooleanType.ts]
+
 // ~ operator on boolean type
 var BOOLEAN: boolean;
 
@@ -47,10 +48,9 @@ var A = (function () {
     }
     A.foo = function () { return false; };
     return A;
-})();
+}());
 var M;
 (function (M) {
-    M.n;
 })(M || (M = {}));
 var objA = new A();
 // boolean type var

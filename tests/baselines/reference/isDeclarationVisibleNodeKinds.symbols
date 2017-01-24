@@ -127,7 +127,7 @@ module schema {
     export function createValidator8(schema: any): Array<{ <T>(data: T) : T}> {
 >createValidator8 : Symbol(createValidator8, Decl(isDeclarationVisibleNodeKinds.ts, 52, 15))
 >schema : Symbol(schema, Decl(isDeclarationVisibleNodeKinds.ts, 53, 37))
->Array : Symbol(Array, Decl(lib.d.ts, 1000, 23), Decl(lib.d.ts, 1171, 11))
+>Array : Symbol(Array, Decl(lib.d.ts, --, --), Decl(lib.d.ts, --, --))
 >T : Symbol(T, Decl(isDeclarationVisibleNodeKinds.ts, 53, 60))
 >data : Symbol(data, Decl(isDeclarationVisibleNodeKinds.ts, 53, 63))
 >T : Symbol(T, Decl(isDeclarationVisibleNodeKinds.ts, 53, 60))
@@ -146,7 +146,7 @@ module schema {
 >T : Symbol(T, Decl(isDeclarationVisibleNodeKinds.ts, 59, 15))
 
         get createValidator9(): <T>(data: T) => T {
->createValidator9 : Symbol(createValidator9, Decl(isDeclarationVisibleNodeKinds.ts, 60, 20))
+>createValidator9 : Symbol(T.createValidator9, Decl(isDeclarationVisibleNodeKinds.ts, 60, 20))
 >T : Symbol(T, Decl(isDeclarationVisibleNodeKinds.ts, 61, 33))
 >data : Symbol(data, Decl(isDeclarationVisibleNodeKinds.ts, 61, 36))
 >T : Symbol(T, Decl(isDeclarationVisibleNodeKinds.ts, 61, 33))
@@ -157,7 +157,7 @@ module schema {
         }
         
         set createValidator10(v: <T>(data: T) => T) {
->createValidator10 : Symbol(createValidator10, Decl(isDeclarationVisibleNodeKinds.ts, 63, 9))
+>createValidator10 : Symbol(T.createValidator10, Decl(isDeclarationVisibleNodeKinds.ts, 63, 9))
 >v : Symbol(v, Decl(isDeclarationVisibleNodeKinds.ts, 65, 30))
 >T : Symbol(T, Decl(isDeclarationVisibleNodeKinds.ts, 65, 34))
 >data : Symbol(data, Decl(isDeclarationVisibleNodeKinds.ts, 65, 37))

@@ -161,14 +161,13 @@ var m1;
             function c1() {
             }
             return c1;
-        })();
+        }());
         m1_M1_public.c1 = c1;
         function f1() {
             return new c1;
         }
         m1_M1_public.f1 = f1;
         m1_M1_public.v1 = c1;
-        m1_M1_public.v2;
     })(m1_M1_public = m1.m1_M1_public || (m1.m1_M1_public = {}));
     var m1_M2_private;
     (function (m1_M2_private) {
@@ -176,14 +175,13 @@ var m1;
             function c1() {
             }
             return c1;
-        })();
+        }());
         m1_M2_private.c1 = c1;
         function f1() {
             return new c1;
         }
         m1_M2_private.f1 = f1;
         m1_M2_private.v1 = c1;
-        m1_M2_private.v2;
     })(m1_M2_private || (m1_M2_private = {}));
     //export declare module "m1_M3_public" {
     //    export function f1();
@@ -237,6 +235,8 @@ var m1;
     //var m1_im4_private_v4_private = m1_im4_private.f1();
     m1.m1_im1_public = m1_M1_public;
     m1.m1_im2_public = m1_M2_private;
+    //export import m1_im3_public = require("m1_M3_public");
+    //export import m1_im4_public = require("m1_M4_private");
 })(m1 || (m1 = {}));
 var glo_M1_public;
 (function (glo_M1_public) {
@@ -244,14 +244,13 @@ var glo_M1_public;
         function c1() {
         }
         return c1;
-    })();
+    }());
     glo_M1_public.c1 = c1;
     function f1() {
         return new c1;
     }
     glo_M1_public.f1 = f1;
     glo_M1_public.v1 = c1;
-    glo_M1_public.v2;
 })(glo_M1_public || (glo_M1_public = {}));
 var m2;
 (function (m2) {
@@ -259,5 +258,6 @@ var m2;
     var m4;
     (function (m4) {
         var a = 10;
+        //import m2 = require("use_glo_M1_public");
     })(m4 || (m4 = {}));
 })(m2 || (m2 = {}));

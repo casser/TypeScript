@@ -25,10 +25,8 @@ var One;
     })(A || (A = {}));
     var B;
     (function (B) {
-        B.x;
     })(B || (B = {}));
 })(One || (One = {}));
-var One;
 (function (One) {
     var A;
     (function (A) {
@@ -36,7 +34,6 @@ var One;
     })(A || (A = {}));
     var B;
     (function (B) {
-        B.y;
     })(B || (B = {}));
     B.x;
     B.y;

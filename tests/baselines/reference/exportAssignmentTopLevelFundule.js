@@ -18,10 +18,10 @@ if(foo.answer === 42){
 
 //// [foo_0.js]
 define(["require", "exports"], function (require, exports) {
+    "use strict";
     function foo() {
         return "test";
     }
-    var foo;
     (function (foo) {
         foo.answer = 42;
     })(foo || (foo = {}));
@@ -29,6 +29,7 @@ define(["require", "exports"], function (require, exports) {
 });
 //// [foo_1.js]
 define(["require", "exports", "./foo_0"], function (require, exports, foo) {
+    "use strict";
     if (foo.answer === 42) {
         var x = foo();
     }

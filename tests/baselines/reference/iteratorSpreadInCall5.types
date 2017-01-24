@@ -29,7 +29,7 @@ class SymbolIterator {
 
             done: false
 >done : boolean
->false : boolean
+>false : false
 
         };
     }
@@ -40,7 +40,7 @@ class SymbolIterator {
 >iterator : symbol
 
         return this;
->this : SymbolIterator
+>this : this
     }
 }
 
@@ -55,11 +55,11 @@ class StringIterator {
 
             value: "",
 >value : string
->"" : string
+>"" : ""
 
             done: false
 >done : boolean
->false : boolean
+>false : false
 
         };
     }
@@ -70,6 +70,6 @@ class StringIterator {
 >iterator : symbol
 
         return this;
->this : StringIterator
+>this : this
     }
 }

@@ -1,4 +1,5 @@
 //// [recursiveMods.ts]
+
 export module Foo {
 	export class C {}
 }
@@ -24,16 +25,16 @@ export module Foo {
 
 
 //// [recursiveMods.js]
+"use strict";
 var Foo;
 (function (Foo) {
     var C = (function () {
         function C() {
         }
         return C;
-    })();
+    }());
     Foo.C = C;
 })(Foo = exports.Foo || (exports.Foo = {}));
-var Foo;
 (function (Foo) {
     function Bar() {
         if (true) {

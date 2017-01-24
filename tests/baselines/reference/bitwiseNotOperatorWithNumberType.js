@@ -1,4 +1,5 @@
 //// [bitwiseNotOperatorWithNumberType.ts]
+
 // ~ operator on number type
 var NUMBER: number;
 var NUMBER1: number[] = [1, 2];
@@ -54,10 +55,9 @@ var A = (function () {
     }
     A.foo = function () { return 1; };
     return A;
-})();
+}());
 var M;
 (function (M) {
-    M.n;
 })(M || (M = {}));
 var objA = new A();
 // number type var

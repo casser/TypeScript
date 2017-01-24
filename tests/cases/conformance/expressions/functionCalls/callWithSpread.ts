@@ -1,5 +1,5 @@
 interface X {
-    foo(x: number, y: number, ...z: string[]);
+    foo(x: number, y: number, ...z: string[]): X;
 }
 
 function foo(x: number, y: number, ...z: string[]) {
@@ -18,9 +18,17 @@ obj.foo(1, 2, "abc");
 obj.foo(1, 2, ...a);
 obj.foo(1, 2, ...a, "abc");
 
+obj.foo(1, 2, ...a).foo(1, 2, "abc");
+obj.foo(1, 2, ...a).foo(1, 2, ...a);
+obj.foo(1, 2, ...a).foo(1, 2, ...a, "abc");
+
 (obj.foo)(1, 2, "abc");
 (obj.foo)(1, 2, ...a);
 (obj.foo)(1, 2, ...a, "abc");
+
+((obj.foo)(1, 2, ...a).foo)(1, 2, "abc");
+((obj.foo)(1, 2, ...a).foo)(1, 2, ...a);
+((obj.foo)(1, 2, ...a).foo)(1, 2, ...a, "abc");
 
 xa[1].foo(1, 2, "abc");
 xa[1].foo(1, 2, ...a);
@@ -47,6 +55,3 @@ class D extends C {
         super.foo(1, 2, ...a);
     }
 }
-
-// Only supported in when target is ES6
-var c = new C(1, 2, ...a);

@@ -18,13 +18,11 @@
 /////* /*inComment5*/
 ////var v11 = '';
 ////  // /*inComment6*/
-////
+////var v12 = '';
+////type htm/*inTypeAlias*/
 ///
 //////  /*inComment7*/
 ////foo;
 ////var v10 = /reg/*inRegExp1*/ex/;
 
-test.markers().forEach((m) => {
-    goTo.position(m.position, m.fileName);
-    verify.completionListIsEmpty();
-});
+goTo.eachMarker(() => verify.completionListIsEmpty());

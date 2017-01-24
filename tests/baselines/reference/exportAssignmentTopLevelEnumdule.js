@@ -19,13 +19,13 @@ if(color === foo.green){
 
 //// [foo_0.js]
 define(["require", "exports"], function (require, exports) {
+    "use strict";
     var foo;
     (function (foo) {
         foo[foo["red"] = 0] = "red";
         foo[foo["green"] = 1] = "green";
         foo[foo["blue"] = 2] = "blue";
     })(foo || (foo = {}));
-    var foo;
     (function (foo) {
         foo.answer = 42;
     })(foo || (foo = {}));
@@ -33,6 +33,7 @@ define(["require", "exports"], function (require, exports) {
 });
 //// [foo_1.js]
 define(["require", "exports", "./foo_0"], function (require, exports, foo) {
+    "use strict";
     var color;
     if (color === foo.green) {
         color = foo.answer;

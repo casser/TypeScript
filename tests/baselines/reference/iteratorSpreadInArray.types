@@ -22,7 +22,7 @@ class SymbolIterator {
 
             done: false
 >done : boolean
->false : boolean
+>false : false
 
         };
     }
@@ -33,6 +33,6 @@ class SymbolIterator {
 >iterator : symbol
 
         return this;
->this : SymbolIterator
+>this : this
     }
 }

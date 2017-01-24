@@ -6,9 +6,9 @@ export function foo() {
 
 
 //// [parserModifierOnStatementInBlock3.js]
+"use strict";
 function foo() {
-    function bar() {
+    export function bar() {
     }
-    exports.bar = bar;
 }
 exports.foo = foo;

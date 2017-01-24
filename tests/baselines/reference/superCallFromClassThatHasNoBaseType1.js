@@ -16,10 +16,10 @@ var A = (function () {
         this.map = map;
     }
     return A;
-})();
+}());
 var B = (function () {
     function B() {
-        _super.call(this, function (value) { return String(value); });
+        _this = _super.call(this, function (value) { return String(value); }) || this;
     }
     return B;
-})();
+}());
