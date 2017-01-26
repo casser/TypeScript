@@ -486,6 +486,9 @@ namespace ts {
                 }
                 recordMergedSymbol(target, source);
             }
+            else if (target.flags & SymbolFlags.NamespaceModule) {
+                error(source.valueDeclaration.name, Diagnostics.Cannot_augment_module_0_with_value_exports_because_it_resolves_to_a_non_module_entity, symbolToString(target));
+            }
             else {
                 const message = target.flags & SymbolFlags.BlockScopedVariable || source.flags & SymbolFlags.BlockScopedVariable
                     ? Diagnostics.Cannot_redeclare_block_scoped_variable_0 : Diagnostics.Duplicate_identifier_0;
@@ -4618,12 +4621,14 @@ namespace ts {
             const typeParameter = getTypeParameterFromMappedType(type);
             const constraintType = getConstraintTypeFromMappedType(type);
             const templateType = getTemplateTypeFromMappedType(type);
-            const modifiersType = getApparentType(getModifiersTypeFromMappedType(type));
+            const modifiersType = getApparentType(getModifiersTypeFromMappedType(type)); // The 'T' in 'keyof T'
             const templateReadonly = !!type.declaration.readonlyToken;
             const templateOptional = !!type.declaration.questionToken;
             if (type.declaration.typeParameter.constraint.kind === SyntaxKind.TypeOperator) {
                 // We have a { [P in keyof T]: X }
-                forEachType(getLiteralTypeFromPropertyNames(modifiersType), addMemberForKeyType);
+                for (const propertySymbol of getPropertiesOfType(modifiersType)) {
+                    addMemberForKeyType(getLiteralTypeFromPropertyName(propertySymbol), propertySymbol);
+                }
                 if (getIndexInfoOfType(modifiersType, IndexKind.String)) {
                     addMemberForKeyType(stringType);
                 }
@@ -4638,7 +4643,7 @@ namespace ts {
             }
             setStructuredTypeMembers(type, members, emptyArray, emptyArray, stringIndexInfo, undefined);
 
-            function addMemberForKeyType(t: Type) {
+            function addMemberForKeyType(t: Type, propertySymbol?: Symbol) {
                 // Create a mapper from T to the current iteration type constituent. Then, if the
                 // mapped type is itself an instantiated type, combine the iteration mapper with the
                 // instantiation mapper.
@@ -4654,6 +4659,9 @@ namespace ts {
                     const prop = <TransientSymbol>createSymbol(SymbolFlags.Property | SymbolFlags.Transient | (isOptional ? SymbolFlags.Optional : 0), propName);
                     prop.type = propType;
                     prop.isReadonly = templateReadonly || modifiersProp && isReadonlySymbol(modifiersProp);
+                    if (propertySymbol) {
+                        prop.mappedTypeOrigin = propertySymbol;
+                    }
                     members.set(propName, prop);
                 }
                 else if (t.flags & TypeFlags.String) {
@@ -11871,6 +11879,16 @@ namespace ts {
         function checkJsxAttribute(node: JsxAttribute, elementAttributesType: Type, nameTable: Map<boolean>) {
             let correspondingPropType: Type = undefined;
 
+            // We need to unconditionally get the expression type
+            let exprType: Type;
+            if (node.initializer) {
+                exprType = checkExpression(node.initializer);
+            }
+            else {
+                // <Elem attr /> is sugar for <Elem attr={true} />
+                exprType = booleanType;
+            }
+
             // Look up the corresponding property for this attribute
             if (elementAttributesType === emptyObjectType && isUnhyphenatedJsxName(node.name.text)) {
                 // If there is no 'props' property, you may not have non-"data-" attributes
@@ -11892,15 +11910,6 @@ namespace ts {
                         }
                     }
                 }
-            }
-
-            let exprType: Type;
-            if (node.initializer) {
-                exprType = checkExpression(node.initializer);
-            }
-            else {
-                // <Elem attr /> is sugar for <Elem attr={true} />
-                exprType = booleanType;
             }
 
             if (correspondingPropType) {
@@ -20233,6 +20242,10 @@ namespace ts {
                     const links = symbol as SymbolLinks;
                     return [links.leftSpread, links.rightSpread];
                 }
+                if ((symbol as SymbolLinks).mappedTypeOrigin) {
+                    return getRootSymbols((symbol as SymbolLinks).mappedTypeOrigin);
+                }
+
                 let target: Symbol;
                 let next = symbol;
                 while (next = getSymbolLinks(next).target) {
