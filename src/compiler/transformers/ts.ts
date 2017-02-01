@@ -7,7 +7,7 @@ namespace ts {
     /**
      * Indicates whether to emit type metadata in the new format.
      */
-    const USE_NEW_TYPE_METADATA_FORMAT = false;
+    const USE_NEW_TYPE_METADATA_FORMAT = true;
 
     const enum TypeScriptSubstitutionFlags {
         /** Enables substitutions for decorated classes. */
@@ -525,27 +525,82 @@ namespace ts {
             if (!name && staticProperties.length > 0) {
                 name = getGeneratedNameForNode(node);
             }
+            const initializeStatements:Statement[] = [];
+            const decorateStatements:Statement[] = [];
+            
+            if (staticProperties.length) {
+                addInitializedPropertyStatements(initializeStatements, staticProperties, getLocalName(node));
+                
+            }
+            
+            
+            // Write any decorators of the node.
+            addClassElementDecorationStatements(decorateStatements, node, /*isStatic*/ false);
+            addClassElementDecorationStatements(decorateStatements, node, /*isStatic*/ true);
+            addConstructorDecorationStatement(decorateStatements, node);
+            
+            
 
             const classStatement = isDecoratedClass
                 ? createClassDeclarationHeadWithDecorators(node, name, hasExtendsClause)
                 : createClassDeclarationHeadWithoutDecorators(node, name, hasExtendsClause, staticProperties.length > 0);
 
             const statements: Statement[] = [classStatement];
-
+            
+            if(initializeStatements.length && moduleKind==ModuleKind.ECMAL){
+                statements.push(createStatement(createAssignment(
+                    createPropertyAccess(node.name,createIdentifier("__initialize")),
+                    createFunctionExpression(
+                        /*modifiers*/ undefined,
+                        /*asteriskToken*/ undefined,
+                        /*name*/ undefined,
+                        /*typeParameters*/ undefined,
+                        /*parameters*/ [],
+                        /*type*/ undefined,
+                        createBlock(
+                            initializeStatements,
+                            /*location*/ undefined,
+                            /*multiLine*/ true
+                        )
+                    )
+                )))
+            }else{
+                statements.push(...initializeStatements);
+            }
+            if(decorateStatements.length && moduleKind==ModuleKind.ECMAL){
+                statements.push(createStatement(createAssignment(
+                    createPropertyAccess(node.name,createIdentifier("__decorate")),
+                    createFunctionExpression(
+                        /*modifiers*/ undefined,
+                        /*asteriskToken*/ undefined,
+                        /*name*/ undefined,
+                        /*typeParameters*/ undefined,
+                        /*parameters*/ [],
+                        /*type*/ undefined,
+                        createBlock(
+                            decorateStatements,
+                            /*location*/ undefined,
+                            /*multiLine*/ true
+                        )
+                    )
+                )))
+            }else{
+                statements.push(...decorateStatements);
+            }
+            if(moduleKind==ModuleKind.ECMAL){
+                statements.push(createStatement(createCall(
+                    createPropertyAccess(createIdentifier("module"),createIdentifier("__class")),
+                    undefined,
+                    [node.name]
+                )))
+            }
             // Emit static property assignment. Because classDeclaration is lexically evaluated,
             // it is safe to emit static property assignment after classDeclaration
             // From ES6 specification:
             //      HasLexicalDeclaration (N) : Determines if the argument identifier has a binding in this environment record that was created using
             //                                  a lexical declaration such as a LexicalDeclaration or a ClassDeclaration.
-            if (staticProperties.length) {
-                addInitializedPropertyStatements(statements, staticProperties, getLocalName(node));
-            }
-
-            // Write any decorators of the node.
-            addClassElementDecorationStatements(statements, node, /*isStatic*/ false);
-            addClassElementDecorationStatements(statements, node, /*isStatic*/ true);
-            addConstructorDecorationStatement(statements, node);
-
+            
+            
             // If the class is exported as part of a TypeScript namespace, emit the namespace export.
             // Otherwise, if the class was exported at the top level and was decorated, emit an export
             // declaration or export default for the class.
@@ -569,6 +624,10 @@ namespace ts {
 
             return singleOrMany(statements);
         }
+
+        /*function createClassStaticMethod(name:string,body:Statement[]):ClassElement{
+            return createMethod(void 0,[createToken(SyntaxKind.StaticKeyword)],void 0,name,void 0,void 0,void 0, createBlock(body,void 0,true));
+        }*/
 
         /**
          * Transforms a non-decorated class declaration and appends the resulting statements.

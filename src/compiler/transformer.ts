@@ -7,9 +7,11 @@
 /// <reference path="transformers/es2015.ts" />
 /// <reference path="transformers/generators.ts" />
 /// <reference path="transformers/es5.ts" />
+/// <reference path="transformers/ecmal.ts" />
 /// <reference path="transformers/module/module.ts" />
 /// <reference path="transformers/module/system.ts" />
 /// <reference path="transformers/module/es2015.ts" />
+/// <reference path="transformers/module/ecmal.ts" />
 
 /* @internal */
 namespace ts {
@@ -17,6 +19,8 @@ namespace ts {
         switch (moduleKind) {
             case ModuleKind.ES2015:
                 return transformES2015Module;
+            case ModuleKind.ECMAL:
+                return transformEcmalModule;
             case ModuleKind.System:
                 return transformSystemModule;
             default:
@@ -33,8 +37,23 @@ namespace ts {
         const jsx = compilerOptions.jsx;
         const languageVersion = getEmitScriptTarget(compilerOptions);
         const moduleKind = getEmitModuleKind(compilerOptions);
-        const transformers: Transformer[] = [];
+        
 
+        if(moduleKind == ModuleKind.ECMAL){
+            return [
+                transformTypeScript,
+                transformJsx,
+                transformESNext,
+                transformES2017,
+                transformES2016,
+                transformES2015,
+                transformGenerators,
+                transformEcmalModule,              
+                //transformES5,
+            ]
+        }
+        
+        const transformers: Transformer[] = [];
         transformers.push(transformTypeScript);
 
         if (jsx === JsxEmit.React) {

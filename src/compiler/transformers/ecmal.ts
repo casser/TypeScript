@@ -260,7 +260,7 @@ namespace ts {
         PropagateNewTargetMask = NewTarget | NewTargetInComputedPropertyName,
     }
 
-    export function transformES2015(context: TransformationContext) {
+    export function transformEcmal(context: TransformationContext) {
         const {
             startLexicalEnvironment,
             resumeLexicalEnvironment,
@@ -269,8 +269,6 @@ namespace ts {
         } = context;
 
         const resolver = context.getEmitResolver();
-        const compilerOptions = context.getCompilerOptions();
-        const moduleKind = compilerOptions.module;
         const previousOnSubstituteNode = context.onSubstituteNode;
         const previousOnEmitNode = context.onEmitNode;
         context.onEmitNode = onEmitNode;
@@ -750,7 +748,7 @@ namespace ts {
             if (node.name) {
                 enableSubstitutionsForBlockScopedBindings();
             }
-            
+
             const extendsClauseElement = getClassExtendsHeritageClauseElement(node);
             const classFunction = createFunctionExpression(
                 /*modifiers*/ undefined,
@@ -799,10 +797,7 @@ namespace ts {
         function transformClassBody(node: ClassExpression | ClassDeclaration, extendsClauseElement: ExpressionWithTypeArguments): Block {
             const statements: Statement[] = [];
             startLexicalEnvironment();
-            if(moduleKind != ModuleKind.ECMAL){
-                addExtendsHelperIfNeeded(statements, node, extendsClauseElement);
-            }
-            
+            addExtendsHelperIfNeeded(statements, node, extendsClauseElement);
             addConstructor(statements, node, extendsClauseElement);
             addClassMembers(statements, node);
 
@@ -815,25 +810,7 @@ namespace ts {
             const outer = createPartiallyEmittedExpression(localName);
             outer.end = closingBraceLocation.end;
             setEmitFlags(outer, EmitFlags.NoComments);
-            if(moduleKind == ModuleKind.ECMAL){
-                statements.push(createStatement(createAssignment(
-                    createPropertyAccess(outer,createIdentifier("__parent")),
-                    createFunctionExpression(
-                        /*modifiers*/ undefined,
-                        /*asteriskToken*/ undefined,
-                        /*name*/ undefined,
-                        /*typeParameters*/ undefined,
-                        /*parameters*/ [],
-                        /*type*/ undefined,
-                        createBlock(
-                            [],
-                            /*location*/ undefined,
-                            /*multiLine*/ true
-                        )
-                    )
-                )));
-                
-            }
+
             const statement = createReturn(outer);
             statement.pos = closingBraceLocation.pos;
             setEmitFlags(statement, EmitFlags.NoComments | EmitFlags.NoTokenSourceMaps);
@@ -945,6 +922,7 @@ namespace ts {
                 addDefaultValueAssignmentsIfNeeded(statements, constructor);
                 addRestParameterIfNeeded(statements, constructor, hasSynthesizedSuper);
                 Debug.assert(statementOffset >= 0, "statementOffset not initialized correctly!");
+
             }
 
             // determine whether the class is known syntactically to be a derived class (e.g. a

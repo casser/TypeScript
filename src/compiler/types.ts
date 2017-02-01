@@ -3294,6 +3294,7 @@
         UMD = 3,
         System = 4,
         ES2015 = 5,
+        ECMAL = 10
     }
 
     export const enum JsxEmit {
