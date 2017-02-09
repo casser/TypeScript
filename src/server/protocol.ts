@@ -189,8 +189,7 @@ namespace ts.server.protocol {
         file: string;
 
         /*
-         * Optional name of project that contains file
-         */
+         * Optional name of project that contains file         */
         projectFileName?: string;
     }
 
@@ -2286,9 +2285,10 @@ namespace ts.server.protocol {
         export type System = "System";
         export type ES6 = "ES6";
         export type ES2015 = "ES2015";
+        export type Ecmal = "ecmal";
     }
 
-    export type ModuleKind = ModuleKind.None | ModuleKind.CommonJS | ModuleKind.AMD | ModuleKind.UMD | ModuleKind.System | ModuleKind.ES6 | ModuleKind.ES2015;
+    export type ModuleKind = ModuleKind.None | ModuleKind.CommonJS | ModuleKind.AMD | ModuleKind.UMD | ModuleKind.System | ModuleKind.ES6 | ModuleKind.ES2015 | ModuleKind.Ecmal;
 
     export namespace ModuleResolutionKind {
         export type Classic = "Classic";

@@ -18,6 +18,18 @@
             "problemMatcher": [
                 "$tsc"
             ]
+        },
+        {
+            "taskName": "runtime",
+            "command": "node",
+            "args": [
+                "./built/local/tsc.js",
+                "-p","./ecmal/runtime"
+            ],
+            "showOutput": "silent",
+            "problemMatcher": [
+                "$tsc-watch"
+            ]
         }
     ]
 }

@@ -1,0 +1,37 @@
+{
+    "extends": "../tsconfig-base",
+    "compilerOptions": {
+        "noImplicitAny": true,
+        "noImplicitThis": true,
+        "preserveConstEnums": true,
+        "pretty": true,
+        "module":"ecmal",
+        "outFile": "../../built/ecmal/typescript/compiler.js",
+        "sourceMap": true,
+        "stripInternal": true,
+        "target": "es5",
+        "noUnusedLocals": true,
+        "noUnusedParameters": true,
+        "declaration": true,
+        "removeComments": true,
+        "types": [
+            "node"
+        ]
+    },
+    "files": [
+        "../server/editorServices.ts",
+        "../server/lsHost.ts",
+        "../server/project.ts",
+        "../server/protocol.ts",
+        "../server/scriptInfo.ts",
+        "../server/scriptVersionCache.ts",
+        "../server/session.ts",
+        "../server/shared.ts",
+        "../server/types.ts",
+        "../server/typingsCache.ts",
+        "../server/utilities.ts",
+        "../services/shims.ts",
+        "../services/utilities.ts",
+        "./compiler.ts"
+    ]
+}

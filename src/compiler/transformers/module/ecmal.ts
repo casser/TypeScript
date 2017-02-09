@@ -1,8 +1,15 @@
 ﻿/// <reference path="../../factory.ts" />
 /// <reference path="../../visitor.ts" />
-declare var console:any;
+//declare var console:any;
 /*@internal*/
 namespace ts {
+    let projectJson:any;
+    function getProjectJson(options: CompilerOptions):any{
+        if(!projectJson){
+            projectJson = parseConfigFileTextToJson(options.configFilePath,sys.readFile(options.configFilePath))
+        }
+        return projectJson.config;
+    }
     export function transformEcmalModule(context: TransformationContext) {
         interface DependencyGroup {
             name: StringLiteral;
@@ -37,25 +44,25 @@ namespace ts {
         let moduleInfo: ExternalModuleInfo; // ExternalModuleInfo for the current file.
         let systemObject: Identifier; // The export function for the current file.
         let moduleObject: Identifier; // The context object for the current file.
-        let exportProperty: PropertyAccessExpression; // The export function for the current file.
+        let exportStarFunction: PropertyAccessExpression; // The context object for the current file.
+        let exportFunction: PropertyAccessExpression; // The export function for the current file.
         let hoistedStatements: Statement[]=[];
         let enclosingBlockScopedContainer: Node;
         let noSubstitution: boolean[]; // Set of nodes for which substitution rules should be ignored.
-
+        let projectName = getProjectJson(compilerOptions).name;
         return transformSourceFile;
         
         
-        function tryGetModuleNameFromFile(file: SourceFile, host: EmitHost, options: CompilerOptions): StringLiteral {
+        function tryGetModuleNameFromFile(file: SourceFile): StringLiteral {
             if (!file) {
                 return undefined;
             }
-            if (file.moduleName) {
-                return createLiteral(file.moduleName);
+            if (!file.moduleName) {
+                if (!isDeclarationFile(file)) {
+                    file.moduleName = (projectName?projectName+'/':'')+getExternalModuleNameFromPath(host, file.fileName);
+                }
             }
-            if (!isDeclarationFile(file) && options) {
-                return createLiteral(getExternalModuleNameFromPath(host, file.fileName));
-            }
-            return undefined;
+            return createLiteral(file.moduleName);
         }
 
         /**
@@ -64,6 +71,10 @@ namespace ts {
          * @param node The SourceFile node.
          */
         function transformSourceFile(node: SourceFile) {
+            sys.write(`TRANSFORM ${node.fileName}\n`);
+            if(isDeclarationFile(node)){
+                tryGetModuleNameFromFile(node)
+            }
             if (isDeclarationFile(node)
                 || !(isExternalModule(node)
                     || compilerOptions.isolatedModules)) {
@@ -95,7 +106,8 @@ namespace ts {
             systemObject = createIdentifier("system");
             exportFunctionsMap[id] = systemObject;
             moduleObject = createIdentifier("module");
-            exportProperty = createPropertyAccess(moduleObject,createIdentifier("__export"));
+            exportFunction = createPropertyAccess(moduleObject,createIdentifier("__export"));
+            exportStarFunction = createPropertyAccess(moduleObject,createIdentifier("__exportAll"));
 
             // Add the body of the module.
             const dependencyGroups = collectDependencyGroups(moduleInfo.externalImports);
@@ -116,8 +128,15 @@ namespace ts {
             // Write the call to `System.register`
             // Clear the emit-helpers flag for later passes since we'll have already used it in the module body
             // So the helper will be emit at the correct position instead of at the top of the source-file
-            const moduleName = tryGetModuleNameFromFile(node, host, compilerOptions);
-            const dependencies = createArrayLiteral(map(dependencyGroups, dependencyGroup => dependencyGroup.name));
+            const moduleName = tryGetModuleNameFromFile(node);
+            const moduleDir = getDirectoryPath(moduleName.text);
+            const dependencies = createArrayLiteral(map(dependencyGroups, dependencyGroup => {
+                let childName = dependencyGroup.name.text;
+                if(isExternalModuleNameRelative(childName)){
+                     dependencyGroup.name.text = normalizePath(moduleDir+'/'+childName);
+                }
+                return dependencyGroup.name
+            }));
             const updated = setEmitFlags(
                 updateSourceFileNode(
                     node,
@@ -125,10 +144,8 @@ namespace ts {
                         createStatement(
                             createCall(
                                 createPropertyAccess(createIdentifier("system"), "register"),
-                            /*typeArguments*/ undefined,
-                                moduleName
-                                    ? [moduleName, dependencies, moduleBodyFunction]
-                                    : [dependencies, moduleBodyFunction]
+                                /*typeArguments*/ undefined,
+                                [moduleName, dependencies, moduleBodyFunction]
                             )
                         )
                     ], node.statements)
@@ -152,7 +169,13 @@ namespace ts {
 
             return aggregateTransformFlags(updated);
         }
-
+        function getExternalModuleNameLiteral(importNode: ImportDeclaration | ExportDeclaration | ImportEqualsDeclaration) {
+            const moduleName = getExternalModuleName(importNode);
+            if (moduleName.kind === SyntaxKind.StringLiteral) {
+                return getSynthesizedClone(<StringLiteral>moduleName);
+            }
+            return undefined;
+        }
         /**
          * Collects the dependency groups for this files imports.
          *
@@ -163,7 +186,8 @@ namespace ts {
             const dependencyGroups: DependencyGroup[] = [];
             for (let i = 0; i < externalImports.length; i++) {
                 const externalImport = externalImports[i];
-                const externalModuleName = getExternalModuleNameLiteral(externalImport, currentSourceFile, host, resolver, compilerOptions);
+                const externalModuleName = getExternalModuleNameLiteral(externalImport);
+                
                 const text = externalModuleName.text;
                 const groupIndex = groupIndices.get(text);
                 if (groupIndex !== undefined) {
@@ -275,15 +299,12 @@ namespace ts {
             // Emit early exports for function declarations.
             addRange(statements, hoistedStatements);
 
-
-
-            const exportStarFunction = addExportStarIfNeeded(statements);
             statements.push(
                 createReturn(
                     setMultiLine(
                         createObjectLiteral([
                             createPropertyAssignment("setters",
-                                createSettersArray(exportStarFunction, dependencyGroups)
+                                createSettersArray(dependencyGroups)
                             ),
                             createPropertyAssignment("execute",
                                 createFunctionExpression(
@@ -310,183 +331,11 @@ namespace ts {
         }
 
         /**
-         * Adds an exportStar function to a statement list if it is needed for the file.
-         *
-         * @param statements A statement list.
-         */
-        function addExportStarIfNeeded(statements: Statement[]) {
-            if (!moduleInfo.hasExportStarsToExportValues) {
-                return;
-            }
-
-            // when resolving exports local exported entries/indirect exported entries in the module
-            // should always win over entries with similar names that were added via star exports
-            // to support this we store names of local/indirect exported entries in a set.
-            // this set is used to filter names brought by star expors.
-
-            // local names set should only be added if we have anything exported
-            if (!moduleInfo.exportedNames && moduleInfo.exportSpecifiers.size === 0) {
-                // no exported declarations (export var ...) or export specifiers (export {x})
-                // check if we have any non star export declarations.
-                let hasExportDeclarationWithExportClause = false;
-                for (const externalImport of moduleInfo.externalImports) {
-                    if (externalImport.kind === SyntaxKind.ExportDeclaration && externalImport.exportClause) {
-                        hasExportDeclarationWithExportClause = true;
-                        break;
-                    }
-                }
-
-                if (!hasExportDeclarationWithExportClause) {
-                    // we still need to emit exportStar helper
-                    const exportStarFunction = createExportStarFunction(/*localNames*/ undefined);
-                    statements.push(exportStarFunction);
-                    return exportStarFunction.name;
-                }
-            }
-
-            const exportedNames: ObjectLiteralElementLike[] = [];
-            if (moduleInfo.exportedNames) {
-                for (const exportedLocalName of moduleInfo.exportedNames) {
-                    if (exportedLocalName.text === "default") {
-                        continue;
-                    }
-
-                    // write name of exported declaration, i.e 'export var x...'
-                    exportedNames.push(
-                        createPropertyAssignment(
-                            createLiteral(exportedLocalName),
-                            createLiteral(true)
-                        )
-                    );
-                }
-            }
-
-            for (const externalImport of moduleInfo.externalImports) {
-                if (externalImport.kind !== SyntaxKind.ExportDeclaration) {
-                    continue;
-                }
-
-                const exportDecl = <ExportDeclaration>externalImport;
-                if (!exportDecl.exportClause) {
-                    // export * from ...
-                    continue;
-                }
-
-                for (const element of exportDecl.exportClause.elements) {
-                    // write name of indirectly exported entry, i.e. 'export {x} from ...'
-                    exportedNames.push(
-                        createPropertyAssignment(
-                            createLiteral((element.name || element.propertyName).text),
-                            createLiteral(true)
-                        )
-                    );
-                }
-            }
-
-            const exportedNamesStorageRef = createUniqueName("exportedNames");
-            statements.push(
-                createVariableStatement(
-                    /*modifiers*/ undefined,
-                    createVariableDeclarationList([
-                        createVariableDeclaration(
-                            exportedNamesStorageRef,
-                            /*type*/ undefined,
-                            createObjectLiteral(exportedNames, /*location*/ undefined, /*multiline*/ true)
-                        )
-                    ])
-                )
-            );
-
-            const exportStarFunction = createExportStarFunction(exportedNamesStorageRef);
-            statements.push(exportStarFunction);
-            return exportStarFunction.name;
-        }
-
-        /**
-         * Creates an exportStar function for the file, with an optional set of excluded local
-         * names.
-         *
-         * @param localNames An optional reference to an object containing a set of excluded local
-         * names.
-         */
-        function createExportStarFunction(localNames: Identifier | undefined) {
-            const exportStarFunction = createUniqueName("exportStar");
-            const m = createIdentifier("m");
-            const n = createIdentifier("n");
-            const exports = createIdentifier("exports");
-            let condition: Expression = createStrictInequality(n, createLiteral("default"));
-            if (localNames) {
-                condition = createLogicalAnd(
-                    condition,
-                    createLogicalNot(
-                        createCall(
-                            createPropertyAccess(localNames, "hasOwnProperty"),
-                            /*typeArguments*/ undefined,
-                            [n]
-                        )
-                    )
-                );
-            }
-
-            return createFunctionDeclaration(
-                /*decorators*/ undefined,
-                /*modifiers*/ undefined,
-                /*asteriskToken*/ undefined,
-                exportStarFunction,
-                /*typeParameters*/ undefined,
-                [createParameter(/*decorators*/ undefined, /*modifiers*/ undefined, /*dotDotDotToken*/ undefined, m)],
-                /*type*/ undefined,
-                createBlock([
-                    createVariableStatement(
-                        /*modifiers*/ undefined,
-                        createVariableDeclarationList([
-                            createVariableDeclaration(
-                                exports,
-                                /*type*/ undefined,
-                                createObjectLiteral([])
-                            )
-                        ])
-                    ),
-                    createForIn(
-                        createVariableDeclarationList([
-                            createVariableDeclaration(n, /*type*/ undefined)
-                        ]),
-                        m,
-                        createBlock([
-                            setEmitFlags(
-                                createIf(
-                                    condition,
-                                    createStatement(
-                                        createAssignment(
-                                            createElementAccess(exports, n),
-                                            createElementAccess(m, n)
-                                        )
-                                    )
-                                ),
-                                EmitFlags.SingleLine
-                            )
-                        ])
-                    ),
-                    createStatement(
-                        createCall(
-                            systemObject,
-                            /*typeArguments*/ undefined,
-                            [exports]
-                        )
-                    )
-                ],
-                /*location*/ undefined,
-                /*multiline*/ true)
-            );
-        }
-
-        /**
          * Creates an array setter callbacks for each dependency group.
          *
-         * @param exportStarFunction A reference to an exportStarFunction for the file.
          * @param dependencyGroups An array of grouped dependencies.
          */
-        function createSettersArray(exportStarFunction: Identifier, dependencyGroups: DependencyGroup[]) {
+        function createSettersArray(dependencyGroups: DependencyGroup[]) {
             const setters: Expression[] = [];
             for (const group of dependencyGroups) {
                 // derive a unique name for parameter from the first named entry in the group
@@ -541,7 +390,7 @@ namespace ts {
                                 statements.push(
                                     createStatement(
                                         createCall(
-                                            exportProperty,
+                                            exportFunction,
                                             /*typeArguments*/ undefined,
                                             [createObjectLiteral(properties, /*location*/ undefined, /*multiline*/ true)]
                                         )
@@ -1123,7 +972,7 @@ namespace ts {
          */
         function createExportExpression(name: Identifier | StringLiteral, value: Expression) {
             const exportName = isIdentifier(name) ? createLiteral(name) : name;
-            return createCall(exportProperty, /*typeArguments*/ undefined, [exportName, value]);
+            return createCall(exportFunction, /*typeArguments*/ undefined, [exportName, value]);
         }
 
         //

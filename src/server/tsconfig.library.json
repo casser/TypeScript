@@ -1,4 +1,5 @@
 {
+    "extends": "../tsconfig-base",
     "compilerOptions": {
         "noImplicitAny": true,
         "noImplicitThis": true,
@@ -10,7 +11,10 @@
         "target": "es5",
         "noUnusedLocals": true,
         "noUnusedParameters": true,
-        "declaration": true
+        "declaration": true,
+        "types": [
+            "node"
+        ]
     },
     "files": [
         "editorServices.ts",

@@ -1,5 +1,6 @@
 ﻿/// <reference path="core.ts" />
 /// <reference path="diagnosticInformationMap.generated.ts" />
+/// <reference path="ecmal.ts" />
 
 namespace ts {
 
@@ -443,7 +444,9 @@ namespace ts {
                     trace(host, Diagnostics.Explicitly_specified_module_resolution_kind_Colon_0, ModuleResolutionKind[moduleResolution]);
                 }
             }
-
+            if(compilerOptions.module==ModuleKind.ECMAL){
+                ecmalModuleNameResolver(moduleName, containingFile, compilerOptions, host, cache)  
+            }
             switch (moduleResolution) {
                 case ModuleResolutionKind.NodeJs:
                     result = nodeModuleNameResolver(moduleName, containingFile, compilerOptions, host, cache);

@@ -38,6 +38,7 @@
         "../compiler/program.ts",
         "../compiler/commandLineParser.ts",
         "../compiler/diagnosticInformationMap.generated.ts",
+        "../compiler/ecmal.ts",
         "types.ts",
         "utilities.ts",
         "breakpoints.ts",

@@ -1,0 +1,19 @@
+{
+    "name": "runtime",
+    "compilerOptions": {
+        "module": "ecmal",
+        "target": "es5",
+        "removeComments": true,
+        "experimentalDecorators": true,
+        "lib": ["es2016","dom"],
+        "pretty": true,
+        "outFile": "../../built/ecmal/runtime/package.js",
+        "declaration": true,
+        "noEmitHelpers": true,
+        "moduleResolution": "classic",
+        "types": []
+    },
+    "include": [
+        "./**/*"
+    ]
+}

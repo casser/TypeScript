@@ -291,7 +291,39 @@ namespace ts {
          * be reset.
          */
         let enabledSubstitutions: ES2015SubstitutionFlags;
-
+        let superOverrider:ObjectLiteralExpression ;
+        function createSuperOverriderObject(){
+            if(!superOverrider){
+                superOverrider = setMultiLine(createObjectLiteral([
+                    createPropertyAssignment("get",createFunctionExpression(
+                        /*modifiers*/ undefined,
+                        /*asteriskToken*/ undefined,
+                        /*name*/ undefined,
+                        /*typeParameters*/ undefined,
+                        [],
+                        /*type*/ undefined,
+                        createBlock([
+                            createReturn(createIdentifier("_super"))
+                        ]),
+                        undefined
+                    )),
+                    createPropertyAssignment("set",createFunctionExpression(
+                        /*modifiers*/ undefined,
+                        /*asteriskToken*/ undefined,
+                        /*name*/ undefined,
+                        /*typeParameters*/ undefined,
+                        [createParameter([],[],undefined,"v")],
+                        /*type*/ undefined,
+                        createBlock([
+                            createStatement(createAssignment(createIdentifier("_super"),createIdentifier("v")))
+                        ]),
+                        undefined
+                    ))
+                ]),true)
+            }
+            return superOverrider;
+        }
+        
         return transformSourceFile;
 
         function transformSourceFile(node: SourceFile) {
@@ -799,10 +831,10 @@ namespace ts {
         function transformClassBody(node: ClassExpression | ClassDeclaration, extendsClauseElement: ExpressionWithTypeArguments): Block {
             const statements: Statement[] = [];
             startLexicalEnvironment();
-            if(moduleKind != ModuleKind.ECMAL){
-                addExtendsHelperIfNeeded(statements, node, extendsClauseElement);
-            }
-            
+            // if(moduleKind != ModuleKind.ECMAL){
+            //     addExtendsHelperIfNeeded(statements, node, extendsClauseElement);
+            // }
+            addExtendsHelperIfNeeded(statements, node, extendsClauseElement);
             addConstructor(statements, node, extendsClauseElement);
             addClassMembers(statements, node);
 
@@ -815,25 +847,25 @@ namespace ts {
             const outer = createPartiallyEmittedExpression(localName);
             outer.end = closingBraceLocation.end;
             setEmitFlags(outer, EmitFlags.NoComments);
-            if(moduleKind == ModuleKind.ECMAL){
-                statements.push(createStatement(createAssignment(
-                    createPropertyAccess(outer,createIdentifier("__parent")),
-                    createFunctionExpression(
-                        /*modifiers*/ undefined,
-                        /*asteriskToken*/ undefined,
-                        /*name*/ undefined,
-                        /*typeParameters*/ undefined,
-                        /*parameters*/ [],
-                        /*type*/ undefined,
-                        createBlock(
-                            [],
-                            /*location*/ undefined,
-                            /*multiLine*/ true
-                        )
-                    )
-                )));
-                
-            }
+            moduleKind;
+            // if(moduleKind == ModuleKind.ECMAL){
+            //     statements.push(createStatement(createAssignment(
+            //         createPropertyAccess(outer,createIdentifier("__parent")),
+            //         createFunctionExpression(
+            //             /*modifiers*/ undefined,
+            //             /*asteriskToken*/ undefined,
+            //             /*name*/ undefined,
+            //             /*typeParameters*/ undefined,
+            //             /*parameters*/ [],
+            //             /*type*/ undefined,
+            //             createBlock(
+            //                 [],
+            //                 /*location*/ undefined,
+            //                 /*multiLine*/ true
+            //             )
+            //         )
+            //     )));
+            // }
             const statement = createReturn(outer);
             statement.pos = closingBraceLocation.pos;
             setEmitFlags(statement, EmitFlags.NoComments | EmitFlags.NoTokenSourceMaps);
@@ -854,13 +886,17 @@ namespace ts {
          * @param extendsClauseElement The expression for the class `extends` clause.
          */
         function addExtendsHelperIfNeeded(statements: Statement[], node: ClassExpression | ClassDeclaration, extendsClauseElement: ExpressionWithTypeArguments): void {
+            let callExpression;
             if (extendsClauseElement) {
                 statements.push(
                     createStatement(
-                        createExtendsHelper(context, getLocalName(node)),
+                        callExpression = createExtendsHelper(context, getLocalName(node)),
                         /*location*/ extendsClauseElement
                     )
                 );
+                if(moduleKind==ModuleKind.ECMAL){
+                    callExpression.arguments.push(createSuperOverriderObject())
+                }
             }
         }
 

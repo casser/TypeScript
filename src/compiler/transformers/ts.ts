@@ -154,7 +154,7 @@ namespace ts {
          * @param node The node to visit.
          */
         function visitorWorker(node: Node): VisitResult<Node> {
-            if (node.transformFlags & TransformFlags.TypeScript) {
+            if ((node.transformFlags & TransformFlags.TypeScript) || node.kind == SyntaxKind.ClassDeclaration) {
                 // This node is explicitly marked as TypeScript, so we should transform the node.
                 return visitTypeScript(node);
             }
@@ -514,7 +514,8 @@ namespace ts {
          */
         function visitClassDeclaration(node: ClassDeclaration): VisitResult<Statement> {
             const staticProperties = getInitializedProperties(node, /*isStatic*/ true);
-            const hasExtendsClause = getClassExtendsHeritageClauseElement(node) !== undefined;
+            const extendsClause = getClassExtendsHeritageClauseElement(node)
+            const hasExtendsClause = extendsClause !== undefined;
             const isDecoratedClass = shouldEmitDecorateCallForClass(node);
 
             // emit name if
@@ -526,18 +527,16 @@ namespace ts {
                 name = getGeneratedNameForNode(node);
             }
             const initializeStatements:Statement[] = [];
-            const decorateStatements:Statement[] = [];
             
             if (staticProperties.length) {
                 addInitializedPropertyStatements(initializeStatements, staticProperties, getLocalName(node));
-                
             }
             
             
             // Write any decorators of the node.
-            addClassElementDecorationStatements(decorateStatements, node, /*isStatic*/ false);
-            addClassElementDecorationStatements(decorateStatements, node, /*isStatic*/ true);
-            addConstructorDecorationStatement(decorateStatements, node);
+            addClassElementDecorationStatements(initializeStatements, node, /*isStatic*/ false);
+            addClassElementDecorationStatements(initializeStatements, node, /*isStatic*/ true);
+            addConstructorDecorationStatement(initializeStatements, node);
             
             
 
@@ -546,11 +545,10 @@ namespace ts {
                 : createClassDeclarationHeadWithoutDecorators(node, name, hasExtendsClause, staticProperties.length > 0);
 
             const statements: Statement[] = [classStatement];
-            
-            if(initializeStatements.length && moduleKind==ModuleKind.ECMAL){
-                statements.push(createStatement(createAssignment(
-                    createPropertyAccess(node.name,createIdentifier("__initialize")),
-                    createFunctionExpression(
+            if(moduleKind==ModuleKind.ECMAL){
+                let callArguments:Expression[] = [node.name];
+                if(initializeStatements.length){
+                    callArguments.push(createFunctionExpression(
                         /*modifiers*/ undefined,
                         /*asteriskToken*/ undefined,
                         /*name*/ undefined,
@@ -562,37 +560,16 @@ namespace ts {
                             /*location*/ undefined,
                             /*multiLine*/ true
                         )
-                    )
-                )))
-            }else{
-                statements.push(...initializeStatements);
-            }
-            if(decorateStatements.length && moduleKind==ModuleKind.ECMAL){
-                statements.push(createStatement(createAssignment(
-                    createPropertyAccess(node.name,createIdentifier("__decorate")),
-                    createFunctionExpression(
-                        /*modifiers*/ undefined,
-                        /*asteriskToken*/ undefined,
-                        /*name*/ undefined,
-                        /*typeParameters*/ undefined,
-                        /*parameters*/ [],
-                        /*type*/ undefined,
-                        createBlock(
-                            decorateStatements,
-                            /*location*/ undefined,
-                            /*multiLine*/ true
-                        )
-                    )
-                )))
-            }else{
-                statements.push(...decorateStatements);
-            }
-            if(moduleKind==ModuleKind.ECMAL){
+                    ))
+                }
                 statements.push(createStatement(createCall(
-                    createPropertyAccess(createIdentifier("module"),createIdentifier("__class")),
+                    createPropertyAccess(createIdentifier('module'),createIdentifier("__class")),
                     undefined,
-                    [node.name]
+                    callArguments
                 )))
+            }else 
+            if(initializeStatements.length){
+                statements.push(...initializeStatements);
             }
             // Emit static property assignment. Because classDeclaration is lexically evaluated,
             // it is safe to emit static property assignment after classDeclaration
@@ -2425,7 +2402,7 @@ namespace ts {
             // enum body.
             if (addVarForEnumOrModuleDeclaration(statements, node)) {
                 // We should still emit the comments if we are emitting a system module.
-                if (moduleKind !== ModuleKind.System || currentScope !== currentSourceFile) {
+                if ((moduleKind !== ModuleKind.System && moduleKind !== ModuleKind.ECMAL) || currentScope !== currentSourceFile) {
                     emitFlags |= EmitFlags.NoLeadingComments;
                 }
             }
@@ -2580,7 +2557,8 @@ namespace ts {
             return isNamespaceExport(node)
                 || (isExternalModuleExport(node)
                     && moduleKind !== ModuleKind.ES2015
-                    && moduleKind !== ModuleKind.System);
+                    && moduleKind !== ModuleKind.System
+                    && moduleKind !== ModuleKind.ECMAL);
         }
 
         /**
@@ -2705,7 +2683,7 @@ namespace ts {
             // module body.
             if (addVarForEnumOrModuleDeclaration(statements, node)) {
                 // We should still emit the comments if we are emitting a system module.
-                if (moduleKind !== ModuleKind.System || currentScope !== currentSourceFile) {
+                if ((moduleKind !== ModuleKind.System && moduleKind !== ModuleKind.ECMAL) || currentScope !== currentSourceFile) {
                     emitFlags |= EmitFlags.NoLeadingComments;
                 }
             }

@@ -392,7 +392,6 @@ namespace ts.server {
                 const message = input.trim();
                 this.onMessage(message);
             });
-
             rl.on("close", () => {
                 this.exit();
             });
@@ -510,7 +509,6 @@ namespace ts.server {
                 nextFileToCheck = nextToCheck;
             }, interval);
         }
-
         function addFile(fileName: string, callback: FileWatcherCallback): WatchedFile {
             const file: WatchedFile = {
                 fileName,

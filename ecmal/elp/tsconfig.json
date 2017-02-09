@@ -1,0 +1,16 @@
+{
+    "name": "elp",
+    "compilerOptions": {
+        "module": "ecmal",
+        "removeComments": true,
+        "sourceMap": true,
+        "sourceRoot": ".",
+        "noEmitHelpers": true,
+        "experimentalDecorators": true,
+        "lib": ["es2016","dom"],
+        "outDir": "../../built/ecmal/elp",
+        "declaration": true,
+        "baseUrl": "../../built/ecmal"
+    },
+    "compileOnSave": true
+}

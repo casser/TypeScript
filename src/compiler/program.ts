@@ -1658,7 +1658,7 @@ namespace ts {
 
             // Cannot specify module gen that isn't amd or system with --out
             if (outFile) {
-                if (options.module && !(options.module === ModuleKind.AMD || options.module === ModuleKind.System)) {
+                if (options.module && !(options.module === ModuleKind.AMD || options.module === ModuleKind.System || options.module === ModuleKind.ECMAL)) {
                     programDiagnostics.add(createCompilerDiagnostic(Diagnostics.Only_amd_and_system_modules_are_supported_alongside_0, options.out ? "out" : "outFile"));
                 }
                 else if (options.module === undefined && firstNonAmbientExternalModuleSourceFile) {
