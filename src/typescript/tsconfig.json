@@ -12,6 +12,7 @@
         "target": "es5",
         "noUnusedLocals": true,
         "noUnusedParameters": true,
+        "noEmitHelpers": true,
         "declaration": true,
         "removeComments": true,
         "types": [

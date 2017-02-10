@@ -3,14 +3,25 @@
 //declare var console:any;
 /*@internal*/
 namespace ts {
-    let projectJson:any;
-    function getProjectJson(options: CompilerOptions):any{
-        if(!projectJson){
-            projectJson = parseConfigFileTextToJson(options.configFilePath,sys.readFile(options.configFilePath))
-        }
-        return projectJson.config;
+    
+    const moduleHelper: EmitHelper = {
+        name: "ecmal:system",
+        scoped: false,
+        priority: 1,
+        text: `
+            var __export = function (module,key,value){};
+            var __module = function (k, v) {};`
+    };
+
+    function createModuleHelper(callArguments:Expression[]) {
+        return createCall(
+            getHelperName("__module"),
+            /*typeArguments*/ undefined,
+            callArguments
+        );
     }
     export function transformEcmalModule(context: TransformationContext) {
+        
         interface DependencyGroup {
             name: StringLiteral;
             externalImports: (ImportDeclaration | ImportEqualsDeclaration | ExportDeclaration)[];
@@ -44,12 +55,12 @@ namespace ts {
         let moduleInfo: ExternalModuleInfo; // ExternalModuleInfo for the current file.
         let systemObject: Identifier; // The export function for the current file.
         let moduleObject: Identifier; // The context object for the current file.
-        let exportStarFunction: PropertyAccessExpression; // The context object for the current file.
-        let exportFunction: PropertyAccessExpression; // The export function for the current file.
+        let exportFunction: Identifier; // The export function for the current file.
         let hoistedStatements: Statement[]=[];
         let enclosingBlockScopedContainer: Node;
         let noSubstitution: boolean[]; // Set of nodes for which substitution rules should be ignored.
-        let projectName = getProjectJson(compilerOptions).name;
+
+        context.requestEmitHelper(moduleHelper);
         return transformSourceFile;
         
         
@@ -58,9 +69,7 @@ namespace ts {
                 return undefined;
             }
             if (!file.moduleName) {
-                if (!isDeclarationFile(file)) {
-                    file.moduleName = (projectName?projectName+'/':'')+getExternalModuleNameFromPath(host, file.fileName);
-                }
+                file.moduleName = getResolvedExternalModuleName(host,file);
             }
             return createLiteral(file.moduleName);
         }
@@ -71,16 +80,46 @@ namespace ts {
          * @param node The SourceFile node.
          */
         function transformSourceFile(node: SourceFile) {
-            sys.write(`TRANSFORM ${node.fileName}\n`);
-            if(isDeclarationFile(node)){
-                tryGetModuleNameFromFile(node)
-            }
-            if (isDeclarationFile(node)
-                || !(isExternalModule(node)
-                    || compilerOptions.isolatedModules)) {
+            let isDeclaration = isDeclarationFile(node);
+            let isExternal = isExternalModule(node)
+            if (isDeclaration){
                 return node;
             }
-
+            if(isExternal){
+                return transformExternalModuleFile(node);
+            }else{
+                return transformStandardModuleFile(node);
+            }
+        }
+        function transformStandardModuleFile(node: SourceFile){
+            sys.write(`TRANSFORM NAMESPACE? ${node.fileName}\n`);
+            function visitVariableStatement(node:VariableStatement){
+                let originalNode = getOriginalNode(node);
+                if(originalNode.kind == SyntaxKind.ModuleDeclaration){
+                    let moduleDecl = <ModuleDeclaration> originalNode;
+                    sys.write(` NAMESPACE VAR ${moduleDecl.name.text}\n`);
+                }                
+                return node;
+            }
+            function visitExpressionStatement(node:ExpressionStatement){
+               let originalNode = getOriginalNode(node);
+                if(originalNode.kind == SyntaxKind.ModuleDeclaration){
+                    let moduleDecl = <ModuleDeclaration> originalNode;
+                    sys.write(` NAMESPACE EXPR ${moduleDecl.name.text}\n`);
+                }                
+                return node;
+            }
+            function nestedElementVisitor(node: Node): VisitResult<Node> {
+                switch (node.kind) {
+                    case SyntaxKind.VariableStatement: return visitVariableStatement(<VariableStatement>node);
+                    case SyntaxKind.ExpressionStatement: return visitExpressionStatement(<ExpressionStatement>node);
+                }
+            }
+            visitNodes(node.statements,nestedElementVisitor,isStatement)
+            return node;
+        }
+        function transformExternalModuleFile(node: SourceFile) {
+            
             const id = getOriginalNodeId(node);
             currentSourceFile = node;
             enclosingBlockScopedContainer = node;
@@ -106,9 +145,7 @@ namespace ts {
             systemObject = createIdentifier("system");
             exportFunctionsMap[id] = systemObject;
             moduleObject = createIdentifier("module");
-            exportFunction = createPropertyAccess(moduleObject,createIdentifier("__export"));
-            exportStarFunction = createPropertyAccess(moduleObject,createIdentifier("__exportAll"));
-
+            exportFunction = createIdentifier("__export");
             // Add the body of the module.
             const dependencyGroups = collectDependencyGroups(moduleInfo.externalImports);
             const moduleBodyBlock = createSystemModuleBody(node, dependencyGroups);
@@ -142,11 +179,7 @@ namespace ts {
                     node,
                     createNodeArray([
                         createStatement(
-                            createCall(
-                                createPropertyAccess(createIdentifier("system"), "register"),
-                                /*typeArguments*/ undefined,
-                                [moduleName, dependencies, moduleBodyFunction]
-                            )
+                            createModuleHelper([moduleName, dependencies, moduleBodyFunction])
                         )
                     ], node.statements)
                 ), EmitFlags.NoTrailingComments);
@@ -169,6 +202,7 @@ namespace ts {
 
             return aggregateTransformFlags(updated);
         }
+
         function getExternalModuleNameLiteral(importNode: ImportDeclaration | ExportDeclaration | ImportEqualsDeclaration) {
             const moduleName = getExternalModuleName(importNode);
             if (moduleName.kind === SyntaxKind.StringLiteral) {
@@ -392,7 +426,7 @@ namespace ts {
                                         createCall(
                                             exportFunction,
                                             /*typeArguments*/ undefined,
-                                            [createObjectLiteral(properties, /*location*/ undefined, /*multiline*/ true)]
+                                            [moduleObject,createObjectLiteral(properties, /*location*/ undefined, /*multiline*/ true)]
                                         )
                                     )
                                 );
@@ -406,9 +440,9 @@ namespace ts {
                                 statements.push(
                                     createStatement(
                                         createCall(
-                                            exportStarFunction,
+                                            exportFunction,
                                             /*typeArguments*/ undefined,
-                                            [parameterName]
+                                            [moduleObject,parameterName]
                                         )
                                     )
                                 );
@@ -612,10 +646,6 @@ namespace ts {
             else {
                 statements = appendExportsOfVariableStatement(statements, node, /*exportSelf*/ false);
             }
-            
-            
-
-           
             return singleOrMany(statements);           
         }
 
@@ -972,7 +1002,7 @@ namespace ts {
          */
         function createExportExpression(name: Identifier | StringLiteral, value: Expression) {
             const exportName = isIdentifier(name) ? createLiteral(name) : name;
-            return createCall(exportFunction, /*typeArguments*/ undefined, [exportName, value]);
+            return createCall(exportFunction, /*typeArguments*/ undefined, [moduleObject, exportName, value]);
         }
 
         //
@@ -1463,7 +1493,8 @@ namespace ts {
          */
         function substituteExpressionIdentifier(node: Identifier): Expression {
             if (getEmitFlags(node) & EmitFlags.HelperName) {
-                return createPropertyAccess(createIdentifier("module"), node);
+                //return createPropertyAccess(createIdentifier("module"), node);
+                return node;
             }
 
             // When we see an identifier in an expression position that
@@ -1619,4 +1650,6 @@ namespace ts {
             return noSubstitution && node.id && noSubstitution[node.id];
         }
     }
+
+    
 }

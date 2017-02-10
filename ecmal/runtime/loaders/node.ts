@@ -48,13 +48,15 @@ export class NodeLoader extends Loader {
     protected loadModule(id:string,url:string):Promise<any>{
         return new Promise<any>((accept,reject)=>{
             if(id.indexOf('node/')==0){
-                accept(this.evalModule(id,url,this.nodeModule(id)))
+                this.evalModule(id,url,this.nodeModule(id))
+                accept(this.registrations[id]||system.module[id])
             }else{
                 NodeLoader.fs.readFile(url, 'utf8', (err, data)=> {
+                    this.evalModule(id,url,data.toString())
                     if (err) {
                         reject(err)
                     } else {
-                        accept(this.evalModule(id,url,data.toString()))
+                        accept(this.registrations[id]||system.module[id])
                     }
                 });
             }
@@ -62,11 +64,7 @@ export class NodeLoader extends Loader {
     }
     protected nodeModule(id){
         return `system.register("${id}",[], function(system,module) {
-            var exported = system.node.require("${id.substr(5)}");
-            for(var name in exported){
-                module.__export(name,exported[name]);
-            }
-            module.export('default',exported);
+            __export(name,system.node.require("${id.substr(5)}"))
         })`
     }
     protected evalModule(id:string,url:string,data:string){

@@ -6,7 +6,7 @@ export abstract class Loader {
     protected abstract detectRoot():void;
     protected abstract loadModule(id:string,url:string):Promise<any>;
     
-    private registrations:any;
+    protected registrations:any;
 
     constructor(){
         if(!system.root){
@@ -55,7 +55,6 @@ export abstract class Loader {
                     value           : parent
                 });
             });
-
             return system.modules[name];
         });
     }
@@ -66,6 +65,7 @@ export abstract class Loader {
         this.registrations[id] = true;
         var url = Path.resolve(system.root,`${id}.js`);
         return this.loadModule(id,url).then(m=>{
+            this.registrations[id] = m;
             this.registrations[id].url = url;
             return this.doLoadDependencies()
         })

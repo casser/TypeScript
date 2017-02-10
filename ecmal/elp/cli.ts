@@ -1,3 +1,3 @@
-import {TS} from "typescript/compiler";
+import {TypeScriptServer} from "typescript/compiler";
 
-console.info(TS.server)
+console.info(TypeScriptServer)

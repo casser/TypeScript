@@ -1,19 +1,10 @@
 import {Emitter} from "./events";
-import {Module,ModuleMap} from "./module";
+import {Module} from "./module";
 import {NodeLoader} from "./loader";
 import {BrowserLoader} from "./loader";
-
-
 import {Loader} from "./loader";
-import {Class,ClassMap} from "./reflect/class";
-
-import "./globals";
-
-
 declare var global:any;
 declare var window:any;
-
-
 export interface Globals {
     [k:string]:any;
 }
@@ -27,31 +18,23 @@ export interface NodeGlobals {
 export interface BrowserGlobals {
     [k:string]:any;
 }
-
 declare global {
-    interface System extends Emitter {
-        url         : string;
-        root        : string;
-        platform    : "browser"|"node";
-        module      : Module;
-        modules     : {[k:string]:Module};
-        classes     : {[k:string]:Class};
-        globals     : any;
-        node        : NodeGlobals;
-        browser     : BrowserGlobals;
-    }
+interface System extends Emitter {
+    url         : string;
+    root        : string;
+    platform    : "browser"|"node";
+    module      : Module;
+    globals     : any;
+    node        : NodeGlobals;
+    browser     : BrowserGlobals;
+}
 }
 export class System extends Emitter implements System {
 
     public url      : string;
     public root     : string;
     public module   : Module;
-    public modules  : ModuleMap;
-    public get classes():ClassMap{
-        return Object.defineProperty(this,'classes',{
-            value:Object.create(null)
-        }).classes
-    }
+    public modules  : {[name:string]:Module};
     public import(name:string){
         return this.loader.import(name);
     }
@@ -156,20 +139,6 @@ export class System extends Emitter implements System {
 
         for(var n in this.modules){
             var m:Module = this.modules[n];
-            if(m.name.indexOf('runtime/')==0){
-                for(var i in m.members){
-                    var member = m.members[i];
-                    if(member.type == 'interface'){
-                        m.define(member.type,member.value);
-                    }else
-                    if(member.__reflection.type=='class'){
-                        Object.defineProperty(m.members,i,{
-                            enumerable  : true,
-                            value       : member.class
-                        });
-                    }
-                }
-            }
             if(!m.url){
                 Object.defineProperty(m,'url',{
                     enumerable      : true,

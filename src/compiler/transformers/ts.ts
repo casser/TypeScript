@@ -562,11 +562,7 @@ namespace ts {
                         )
                     ))
                 }
-                statements.push(createStatement(createCall(
-                    createPropertyAccess(createIdentifier('module'),createIdentifier("__class")),
-                    undefined,
-                    callArguments
-                )))
+                statements.push(createStatement(createClassHelper(context,callArguments)))
             }else 
             if(initializeStatements.length){
                 statements.push(...initializeStatements);
@@ -2605,7 +2601,8 @@ namespace ts {
                 visitNodes(node.modifiers, modifierVisitor, isModifier),
                 [
                     createVariableDeclaration(
-                        getLocalName(node, /*allowComments*/ false, /*allowSourceMaps*/ true)
+                        getLocalName(node, /*allowComments*/ false, /*allowSourceMaps*/ true),
+                        undefined
                     )
                 ]
             );
@@ -3367,6 +3364,27 @@ namespace ts {
                 expression
             ],
             location
+        );
+    }
+
+    const classHelper: EmitHelper = {
+        name: "ecmal:class",
+        scoped: false,
+        priority: 1,
+        text: `
+            var __class = (this && this.__class) || function (k, v) {
+                if(typeof init=='function'){
+                    init();
+                }
+            };`
+    };
+
+    function createClassHelper(context: TransformationContext, callArguments:Expression[]) {
+        context.requestEmitHelper(classHelper);
+        return createCall(
+            getHelperName("__class"),
+            /*typeArguments*/ undefined,
+            callArguments
         );
     }
 

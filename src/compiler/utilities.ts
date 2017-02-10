@@ -2535,6 +2535,13 @@ namespace ts {
     }
 
     export function getResolvedExternalModuleName(host: EmitHost, file: SourceFile): string {
+        let compilerOptions = host.getCompilerOptions();
+        if(compilerOptions.module == ModuleKind.ECMAL){
+            let projectName  = getEcmalProjectJson(compilerOptions).name;
+            if(projectName){
+                file.moduleName = projectName+'/'+getExternalModuleNameFromPath(host, file.fileName);
+            }
+        }
         return file.moduleName || getExternalModuleNameFromPath(host, file.fileName);
     }
 
