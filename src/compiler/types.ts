@@ -3794,19 +3794,14 @@
         Unspecified,        // Emitting an otherwise unspecified node
     }
 
-    /* @internal */
+    
     export interface EmitHost extends ScriptReferenceHost {
         getSourceFiles(): SourceFile[];
-
-        /* @internal */
         isSourceFileFromExternalLibrary(file: SourceFile): boolean;
-
         getCommonSourceDirectory(): string;
         getCanonicalFileName(fileName: string): string;
         getNewLine(): string;
-
         isEmitBlocked(emitFileName: string): boolean;
-
         writeFile: WriteFileCallback;
     }
 

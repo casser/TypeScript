@@ -555,11 +555,7 @@ namespace ts {
                         /*typeParameters*/ undefined,
                         /*parameters*/ [],
                         /*type*/ undefined,
-                        createBlock(
-                            initializeStatements,
-                            /*location*/ undefined,
-                            /*multiLine*/ true
-                        )
+                        createBlock(initializeStatements,/*multiLine*/ true)
                     ))
                 }
                 statements.push(createStatement(createClassHelper(context,callArguments)))

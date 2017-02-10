@@ -1,6 +1,6 @@
 ﻿/// <reference path="../../factory.ts" />
 /// <reference path="../../visitor.ts" />
-//declare var console:any;
+
 /*@internal*/
 namespace ts {
     
@@ -146,11 +146,14 @@ namespace ts {
             const updated = setEmitFlags(
                 updateSourceFileNode(
                     node,
-                    createNodeArray([
-                        createStatement(
-                            createModuleHelper([moduleName, dependencies, moduleBodyFunction])
-                        )
-                    ], node.statements)
+                    setTextRange(
+                        createNodeArray([
+                            createStatement(
+                                createModuleHelper([moduleName, dependencies, moduleBodyFunction])
+                            )
+                        ]),
+                        node.statements
+                    )
                 ), EmitFlags.NoTrailingComments);
 
             if (!(compilerOptions.outFile || compilerOptions.out)) {
@@ -301,36 +304,25 @@ namespace ts {
 
             // Emit early exports for function declarations.
             addRange(statements, hoistedStatements);
-
-            statements.push(
-                createReturn(
-                    setMultiLine(
-                        createObjectLiteral([
-                            createPropertyAssignment("setters",
-                                createSettersArray(dependencyGroups)
-                            ),
-                            createPropertyAssignment("execute",
-                                createFunctionExpression(
-                                    /*modifiers*/ undefined,
-                                    /*asteriskToken*/ undefined,
-                                    /*name*/ undefined,
-                                    /*typeParameters*/ undefined,
-                                    /*parameters*/ [],
-                                    /*type*/ undefined,
-                                    createBlock(
-                                        executeStatements,
-                                        /*location*/ undefined,
-                                        /*multiLine*/ true
-                                    )
-                                )
-                            )
-                        ]),
-                        /*multiLine*/ true
+            const moduleObject = createObjectLiteral([
+                createPropertyAssignment("setters",
+                    createSettersArray(dependencyGroups)
+                ),
+                createPropertyAssignment("execute",
+                    createFunctionExpression(
+                        /*modifiers*/ undefined,
+                        /*asteriskToken*/ undefined,
+                        /*name*/ undefined,
+                        /*typeParameters*/ undefined,
+                        /*parameters*/ [],
+                        /*type*/ undefined,
+                        createBlock(executeStatements, /*multiLine*/ true)
                     )
                 )
-            );
-
-            return createBlock(statements, /*location*/ undefined, /*multiLine*/ true);
+            ]);
+            moduleObject.multiLine = true;
+            statements.push(createReturn(moduleObject));
+            return createBlock(statements, /*multiLine*/ true);
         }
 
         /**
@@ -395,7 +387,7 @@ namespace ts {
                                         createCall(
                                             exportFunction,
                                             /*typeArguments*/ undefined,
-                                            [moduleObject,createObjectLiteral(properties, /*location*/ undefined, /*multiline*/ true)]
+                                            [moduleObject,createObjectLiteral(properties, /*multiline*/ true)]
                                         )
                                     )
                                 );
@@ -428,12 +420,12 @@ namespace ts {
                         /*typeParameters*/ undefined,
                         [createParameter(/*decorators*/ undefined, /*modifiers*/ undefined, /*dotDotDotToken*/ undefined, parameterName)],
                         /*type*/ undefined,
-                        createBlock(statements, /*location*/ undefined, /*multiLine*/ true)
+                        createBlock(statements, /*multiLine*/ true)
                     )
                 );
             }
 
-            return createArrayLiteral(setters, /*location*/ undefined, /*multiLine*/ true);
+            return createArrayLiteral(setters, /*multiLine*/ true);
         }
 
         //
@@ -575,8 +567,44 @@ namespace ts {
          * @param node The node to visit.
          */
         function visitClassDeclaration(node: ClassDeclaration): VisitResult<Statement> {
-            hoistedStatements = append(hoistedStatements,node);
-            return undefined;
+            let statements: Statement[];
+
+            // Hoist the name of the class declaration to the outer module body function.
+            const name = getLocalName(node);
+            hoistVariableDeclaration(name);
+
+            // Rewrite the class declaration into an assignment of a class expression.
+            statements = append(statements,
+                setTextRange(
+                    createStatement(
+                        createAssignment(
+                            name,
+                            setTextRange(
+                                createClassExpression(
+                                    /*modifiers*/ undefined,
+                                    node.name,
+                                    /*typeParameters*/ undefined,
+                                    visitNodes(node.heritageClauses, destructuringVisitor, isHeritageClause),
+                                    visitNodes(node.members, destructuringVisitor, isClassElement)
+                                ),
+                                node
+                            )
+                        )
+                    ),
+                    node
+                )
+            );
+
+            if (hasAssociatedEndOfDeclarationMarker(node)) {
+                // Defer exports until we encounter an EndOfDeclarationMarker node
+                const id = getOriginalNodeId(node);
+                deferredExports[id] = appendExportsOfHoistedDeclaration(deferredExports[id], node);
+            }
+            else {
+                statements = appendExportsOfHoistedDeclaration(statements, node);
+            }
+
+            return singleOrMany(statements);
         }
 
         /**
@@ -604,7 +632,7 @@ namespace ts {
 
             let statements: Statement[];
             if (expressions) {
-                statements = append(statements, createStatement(inlineExpressions(expressions), /*location*/ node));
+                statements = append(statements, setTextRange(createStatement(inlineExpressions(expressions)), node));
             }
 
             if (isMarkedDeclaration) {
@@ -615,7 +643,8 @@ namespace ts {
             else {
                 statements = appendExportsOfVariableStatement(statements, node, /*exportSelf*/ false);
             }
-            return singleOrMany(statements);           
+
+            return singleOrMany(statements);
         }
 
         /**
@@ -701,8 +730,8 @@ namespace ts {
         function createVariableAssignment(name: Identifier, value: Expression, location: TextRange, isExportedDeclaration: boolean) {
             hoistVariableDeclaration(getSynthesizedClone(name));
             return isExportedDeclaration
-                ? createExportExpression(name, preventSubstitution(createAssignment(name, value, location)))
-                : preventSubstitution(createAssignment(name, value, location));
+                ? createExportExpression(name, preventSubstitution(setTextRange(createAssignment(name, value), location)))
+                : preventSubstitution(setTextRange(createAssignment(name, value), location));
         }
 
         /**
@@ -1476,16 +1505,20 @@ namespace ts {
                 const importDeclaration = resolver.getReferencedImportDeclaration(node);
                 if (importDeclaration) {
                     if (isImportClause(importDeclaration)) {
-                        return createPropertyAccess(
-                            getGeneratedNameForNode(importDeclaration.parent),
-                            createIdentifier("default"),
+                        return setTextRange(
+                            createPropertyAccess(
+                                getGeneratedNameForNode(importDeclaration.parent),
+                                createIdentifier("default")
+                            ),
                             /*location*/ node
                         );
                     }
                     else if (isImportSpecifier(importDeclaration)) {
-                        return createPropertyAccess(
-                            getGeneratedNameForNode(importDeclaration.parent.parent.parent),
-                            getSynthesizedClone(importDeclaration.propertyName || importDeclaration.name),
+                        return setTextRange(
+                            createPropertyAccess(
+                                getGeneratedNameForNode(importDeclaration.parent.parent.parent),
+                                getSynthesizedClone(importDeclaration.propertyName || importDeclaration.name)
+                            ),
                             /*location*/ node
                         );
                     }
@@ -1552,10 +1585,13 @@ namespace ts {
                 const exportedNames = getExports(node.operand);
                 if (exportedNames) {
                     let expression: Expression = node.kind === SyntaxKind.PostfixUnaryExpression
-                        ? createPrefix(
-                            node.operator,
-                            node.operand,
-                            /*location*/ node)
+                        ? setTextRange(
+                            createPrefix(
+                                node.operator,
+                                node.operand
+                            ),
+                            node
+                        )
                         : node;
 
                     for (const exportName of exportedNames) {

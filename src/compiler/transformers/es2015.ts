@@ -294,7 +294,7 @@ namespace ts {
         let superOverrider:ObjectLiteralExpression ;
         function createSuperOverriderObject(){
             if(!superOverrider){
-                superOverrider = setMultiLine(createObjectLiteral([
+                superOverrider = createObjectLiteral([
                     createPropertyAssignment("get",createFunctionExpression(
                         /*modifiers*/ undefined,
                         /*asteriskToken*/ undefined,
@@ -304,8 +304,7 @@ namespace ts {
                         /*type*/ undefined,
                         createBlock([
                             createReturn(createIdentifier("_super"))
-                        ]),
-                        undefined
+                        ])
                     )),
                     createPropertyAssignment("set",createFunctionExpression(
                         /*modifiers*/ undefined,
@@ -316,10 +315,10 @@ namespace ts {
                         /*type*/ undefined,
                         createBlock([
                             createStatement(createAssignment(createIdentifier("_super"),createIdentifier("v")))
-                        ]),
-                        undefined
+                        ])
                     ))
-                ]),true)
+                ])
+                superOverrider.multiLine = true;
             }
             return superOverrider;
         }

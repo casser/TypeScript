@@ -14,6 +14,8 @@ namespace ts {
         let projectName  = getEcmalProjectJson(host.getCompilerOptions()).name;
         if(projectName){
             return projectName+'/'+getExternalModuleNameFromPath(host, file.fileName);
+        }else{
+            return getExternalModuleNameFromPath(host, file.fileName)
         }
     }
     
