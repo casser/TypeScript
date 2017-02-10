@@ -1,4 +1,5 @@
 /// <reference types="node" />
+/// <reference path="../compiler/core.ts" />
 /// <reference path="../server/shared.ts" />
 /// <reference path="../server/session.ts" />
 

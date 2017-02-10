@@ -82,41 +82,10 @@ namespace ts {
         function transformSourceFile(node: SourceFile) {
             let isDeclaration = isDeclarationFile(node);
             let isExternal = isExternalModule(node)
-            if (isDeclaration){
+            if (isDeclaration || !(isExternal || compilerOptions.isolatedModules)){
                 return node;
             }
-            if(isExternal){
-                return transformExternalModuleFile(node);
-            }else{
-                return transformStandardModuleFile(node);
-            }
-        }
-        function transformStandardModuleFile(node: SourceFile){
-            sys.write(`TRANSFORM NAMESPACE? ${node.fileName}\n`);
-            function visitVariableStatement(node:VariableStatement){
-                let originalNode = getOriginalNode(node);
-                if(originalNode.kind == SyntaxKind.ModuleDeclaration){
-                    let moduleDecl = <ModuleDeclaration> originalNode;
-                    sys.write(` NAMESPACE VAR ${moduleDecl.name.text}\n`);
-                }                
-                return node;
-            }
-            function visitExpressionStatement(node:ExpressionStatement){
-               let originalNode = getOriginalNode(node);
-                if(originalNode.kind == SyntaxKind.ModuleDeclaration){
-                    let moduleDecl = <ModuleDeclaration> originalNode;
-                    sys.write(` NAMESPACE EXPR ${moduleDecl.name.text}\n`);
-                }                
-                return node;
-            }
-            function nestedElementVisitor(node: Node): VisitResult<Node> {
-                switch (node.kind) {
-                    case SyntaxKind.VariableStatement: return visitVariableStatement(<VariableStatement>node);
-                    case SyntaxKind.ExpressionStatement: return visitExpressionStatement(<ExpressionStatement>node);
-                }
-            }
-            visitNodes(node.statements,nestedElementVisitor,isStatement)
-            return node;
+            return transformExternalModuleFile(node);
         }
         function transformExternalModuleFile(node: SourceFile) {
             

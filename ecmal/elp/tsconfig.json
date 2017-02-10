@@ -7,9 +7,12 @@
         "sourceRoot": ".",
         "noEmitHelpers": true,
         "experimentalDecorators": true,
+        "allowJs": false,
+        "target":"es5",
         "lib": ["es2016","dom"],
-        "outDir": "../../built/ecmal/elp",
+        "outFile": "../../built/ecmal/elp/cli.js",
         "declaration": true,
-        "baseUrl": "../../built/ecmal"
+        "baseUrl": "../../built/ecmal",
+        "types": []
     }
 }

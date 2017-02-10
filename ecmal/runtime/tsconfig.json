@@ -7,15 +7,10 @@
         "experimentalDecorators": true,
         "lib": ["es2016","dom"],
         "pretty": true,
-        "isolatedModules": false,
         "outFile": "../../built/ecmal/runtime/package.js",
         "declaration": true,
         "noEmitHelpers": true,
         "stripInternal": true,
-        "moduleResolution": "classic",
         "types": []
-    },
-    "include": [
-        "./**/*"
-    ]
+    }
 }
