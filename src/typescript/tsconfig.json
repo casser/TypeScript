@@ -6,7 +6,7 @@
         "preserveConstEnums": true,
         "pretty": true,
         "module":"ecmal",
-        "outFile": "../../built/ecmal/typescript/compiler.js",
+        "outFile": "/Users/Sergey/Work/GH/ecmal-ts/out/typescript/compiler.js",
         "sourceMap": true,
         "target": "es5",
         "noUnusedLocals": true,
@@ -14,9 +14,7 @@
         "noEmitHelpers": true,
         "declaration": true,
         "removeComments": true,
-        "types": [
-            "node"
-        ]
+        "types": ["node"]
     },
     "files": [
         "../compiler/core.ts",

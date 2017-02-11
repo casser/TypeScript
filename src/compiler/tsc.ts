@@ -151,14 +151,11 @@ namespace ts {
 
     function reportWatchDiagnostic(diagnostic: Diagnostic) {
         let output = new Date().toLocaleTimeString() + " - ";
-
         if (diagnostic.file) {
             const loc = getLineAndCharacterOfPosition(diagnostic.file, diagnostic.start);
             output += `${ diagnostic.file.fileName }(${ loc.line + 1 },${ loc.character + 1 }): `;
         }
-
-        output += `${ flattenDiagnosticMessageText(diagnostic.messageText, sys.newLine) }${ sys.newLine + sys.newLine + sys.newLine }`;
-
+        output += `${ flattenDiagnosticMessageText(diagnostic.messageText, sys.newLine) }${sys.newLine}`;
         sys.write(output);
     }
 

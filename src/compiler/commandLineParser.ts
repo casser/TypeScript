@@ -833,7 +833,35 @@ namespace ts {
         }
         return output;
     }
-
+    
+    export function convertEcmalProjectConfiguration(json: any, baseDir:string):void{
+        let rootDir = json.sources;
+        let baseUrl = `${json.release}`;
+        let outDir = `${json.release}/${json.name}`;
+        let srcDir = getRelativePathToDirectoryOrUrl(baseUrl,rootDir,baseDir,f=>f,false)
+        json.compilerOptions            = assign({}, assign({
+            experimentalDecorators      : true,
+            emitDecoratorMetadata       : true,
+            lib                         : ["es2016"]
+        },json.options||{}),{
+            module                      : "ecmal",
+            noEmitHelpers               : true,
+            allowJs                     : false,
+            target                      : "es5",
+            declaration                 : true,
+            rootDir                     : json.sources,
+            outDir                      : outDir,
+            baseUrl                     : baseUrl,
+            paths                       : (()=>{
+                let paths:any = {}
+                for(let m in json.modules){
+                    paths[`${m}/*`] = [`./${m}/*`,`./${m}/package.d.ts`]
+                }
+                paths[`${json.name}/*`] = [`${srcDir}/*`]
+                return paths;
+            })()
+        });
+    }
     /**
       * Parse the contents of a config file (tsconfig.json).
       * @param json The contents of the config file to parse
@@ -855,6 +883,9 @@ namespace ts {
                 errors: [createCompilerDiagnostic(Diagnostics.Circularity_detected_while_resolving_configuration_Colon_0, [...resolutionStack, resolvedPath].join(" -> "))],
                 wildcardDirectories: {}
             };
+        }
+        if(getBaseFileName(configFileName) === "project.json"){
+            convertEcmalProjectConfiguration(json,getDirectoryPath(resolvedPath));
         }
 
         let options: CompilerOptions = convertCompilerOptionsFromJsonWorker(json["compilerOptions"], basePath, errors, configFileName);
@@ -1020,9 +1051,7 @@ namespace ts {
         return { options, errors };
     }
 
-    function convertCompilerOptionsFromJsonWorker(jsonOptions: any,
-        basePath: string, errors: Diagnostic[], configFileName?: string): CompilerOptions {
-
+    function convertCompilerOptionsFromJsonWorker(jsonOptions: any, basePath: string, errors: Diagnostic[], configFileName?: string): CompilerOptions {
         const options: CompilerOptions = getBaseFileName(configFileName) === "jsconfig.json"
             ? { allowJs: true, maxNodeModuleJsDepth: 2, allowSyntheticDefaultImports: true, skipLibCheck: true }
             : {};
@@ -1030,8 +1059,7 @@ namespace ts {
         return options;
     }
 
-    function convertTypeAcquisitionFromJsonWorker(jsonOptions: any,
-        basePath: string, errors: Diagnostic[], configFileName?: string): TypeAcquisition {
+    function convertTypeAcquisitionFromJsonWorker(jsonOptions: any, basePath: string, errors: Diagnostic[], configFileName?: string): TypeAcquisition {
 
         const options: TypeAcquisition = { enable: getBaseFileName(configFileName) === "jsconfig.json", include: [], exclude: [] };
         const typeAcquisition = convertEnableAutoDiscoveryToEnable(jsonOptions);
@@ -1040,8 +1068,7 @@ namespace ts {
         return options;
     }
 
-    function convertOptionsFromJson(optionDeclarations: CommandLineOption[], jsonOptions: any, basePath: string,
-        defaultOptions: CompilerOptions | TypeAcquisition, diagnosticMessage: DiagnosticMessage, errors: Diagnostic[]) {
+    function convertOptionsFromJson(optionDeclarations: CommandLineOption[], jsonOptions: any, basePath: string, defaultOptions: CompilerOptions | TypeAcquisition, diagnosticMessage: DiagnosticMessage, errors: Diagnostic[]) {
 
         if (!jsonOptions) {
             return;

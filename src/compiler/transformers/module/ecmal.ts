@@ -1,7 +1,6 @@
 ﻿/// <reference path="../../factory.ts" />
 /// <reference path="../../visitor.ts" />
 
-/*@internal*/
 namespace ts {
     
     const moduleHelper: EmitHelper = {
@@ -1655,6 +1654,4 @@ namespace ts {
             return noSubstitution && node.id && noSubstitution[node.id];
         }
     }
-
-    
 }

@@ -741,6 +741,11 @@ namespace ts.server {
         // the newly opened file.
         private findConfigFile(searchPath: NormalizedPath): NormalizedPath {
             while (true) {
+                const elpconfigFileName = asNormalizedPath(combinePaths(searchPath, "project.json"));
+                if (this.host.fileExists(elpconfigFileName)) {
+                    return elpconfigFileName;
+                }
+
                 const tsconfigFileName = asNormalizedPath(combinePaths(searchPath, "tsconfig.json"));
                 if (this.host.fileExists(tsconfigFileName)) {
                     return tsconfigFileName;
@@ -948,6 +953,7 @@ namespace ts.server {
 
         private openConfigFile(configFileName: NormalizedPath, clientFileName?: string): OpenConfigFileResult {
             const conversionResult = this.convertConfigFileContentToProjectOptions(configFileName);
+            this.logger.info(`PROJECT CONFIG: ${JSON.stringify(conversionResult.projectOptions.compilerOptions)}`);
             const projectOptions = conversionResult.success
                 ? conversionResult.projectOptions
                 : { files: [], compilerOptions: {} };
