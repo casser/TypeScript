@@ -1,5 +1,6 @@
 ﻿/// <reference path="types.ts"/>
 /// <reference path="performance.ts" />
+/// <reference path="ecmal.ts" />
 
 namespace ts {
     /** The version of the TypeScript compiler release */

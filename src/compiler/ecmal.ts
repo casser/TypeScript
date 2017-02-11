@@ -1,3 +1,4 @@
+/** @internal */
 namespace ts {
     let projectJsons:{[s:string]:any} = Object.create({});
 
@@ -9,16 +10,6 @@ namespace ts {
         }
         return configJson.config;
     }
-
-    export function getEcmalModuleName(host: EmitHost, file: SourceFile){
-        let projectName  = getEcmalProjectJson(host.getCompilerOptions()).name;
-        if(projectName){
-            return projectName+'/'+getExternalModuleNameFromPath(host, file.fileName);
-        }else{
-            return getExternalModuleNameFromPath(host, file.fileName)
-        }
-    }
-    
 
     export function ecmalModuleNameResolver(moduleName: string, containingFile: string, compilerOptions: CompilerOptions, host: ModuleResolutionHost, cache?: ModuleResolutionCache): ResolvedModuleWithFailedLookupLocations {
         let result = classicNameResolver(moduleName, containingFile, compilerOptions, host, cache)

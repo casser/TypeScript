@@ -339,7 +339,7 @@ namespace ts {
 
         Debug.fail(`Literal kind '${node.kind}' not accounted for.`);
     }
-
+    
     export function isBinaryOrOctalIntegerLiteral(node: LiteralLikeNode, text: string) {
         return node.kind === SyntaxKind.NumericLiteral
             && (getNumericLiteralFlags(text, /*hint*/ NumericLiteralFlags.BinaryOrOctal) & NumericLiteralFlags.BinaryOrOctal) !== 0;
@@ -4551,5 +4551,13 @@ namespace ts {
         }
 
         return undefined;
+    }
+    export function getEcmalModuleName(host: EmitHost, file: SourceFile){
+        let projectName  = getEcmalProjectJson(host.getCompilerOptions()).name;
+        if(projectName){
+            return projectName+'/'+getExternalModuleNameFromPath(host, file.fileName);
+        }else{
+            return getExternalModuleNameFromPath(host, file.fileName)
+        }
     }
 }
