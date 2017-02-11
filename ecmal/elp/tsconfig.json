@@ -13,6 +13,6 @@
         "outFile": "../../built/ecmal/elp/cli.js",
         "declaration": true,
         "baseUrl": "../../built/ecmal",
-        "types": []
+        "types": [] 
     }
 }

@@ -1,5 +1,5 @@
 {
-    "name": "typescript",
+    "name": "ets",
     "author": "Microsoft Corp.",
     "homepage": "http://typescriptlang.org/",
     "version": "2.2.0",
@@ -22,8 +22,7 @@
     "main": "./lib/typescript.js",
     "typings": "./lib/typescript.d.ts",
     "bin": {
-        "tsc": "./bin/tsc",
-        "tsserver": "./bin/tsserver"
+        "ets": "./bins/ets"
     },
     "engines": {
         "node": ">=4.2.0"

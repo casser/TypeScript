@@ -442,7 +442,6 @@ namespace ts {
             if (fileName && !ts.isSupportedSourceFileName(fileName, compilerOptions)) {
                 return;
             }
-
             startTimerForHandlingDirectoryChanges();
         }
 
