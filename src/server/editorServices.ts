@@ -741,7 +741,7 @@ namespace ts.server {
         // the newly opened file.
         private findConfigFile(searchPath: NormalizedPath): NormalizedPath {
             while (true) {
-                const elpconfigFileName = asNormalizedPath(combinePaths(searchPath, "project.json"));
+                const elpconfigFileName = asNormalizedPath(combinePaths(searchPath, "package.json"));
                 if (this.host.fileExists(elpconfigFileName)) {
                     return elpconfigFileName;
                 }

@@ -838,24 +838,36 @@ namespace ts {
         let rootDir = json.sources;
         let baseUrl = `${json.release}`;
         let outDir = `${json.release}/${json.name}`;
-        let srcDir = getRelativePathToDirectoryOrUrl(baseUrl,rootDir,baseDir,f=>f,false)
-        json.compilerOptions            = assign({}, assign({
+        
+        let srcDir = getRelativePathToDirectoryOrUrl(baseUrl,rootDir,baseDir,f=>f,false);
+        let options = assign({
             experimentalDecorators      : true,
             emitDecoratorMetadata       : true,
-            lib                         : ["es2016"]
-        },json.options||{}),{
-            module                      : "ecmal",
             noEmitHelpers               : true,
-            allowJs                     : false,
-            target                      : "es5",
+            stripInternal               : true,      
             declaration                 : true,
-            rootDir                     : json.sources,
-            outDir                      : outDir,
+            lib                         : ["es2016"]
+        },json.typescript||json.options||{});
+        if(options.bundle){
+            options.outFile = `${outDir}/index.js`;
+            delete options.outDir;
+        }else{
+            options.outDir = outDir;
+            delete options.outFile;
+        }
+        delete options.bundle;
+        
+        json.compilerOptions            = assign({},options,{
+            module                      : options.module||"ecmal",
+            target                      : "es5",
+            rootDir                     : rootDir,
             baseUrl                     : baseUrl,
             paths                       : (()=>{
                 let paths:any = {}
-                for(let m in json.modules){
-                    paths[`${m}/*`] = [`./${m}/*`,`./${m}/package.d.ts`]
+                if(json.modules){
+                    for(let m in json.modules){
+                        paths[`${m}/*`] = [`./${m}/*`,`./${m}/index.d.ts`,`./${m}/package.d.ts`]
+                    }
                 }
                 paths[`${json.name}/*`] = [`${srcDir}/*`]
                 return paths;
@@ -884,8 +896,18 @@ namespace ts {
                 wildcardDirectories: {}
             };
         }
-        if(getBaseFileName(configFileName) === "project.json"){
-            convertEcmalProjectConfiguration(json,getDirectoryPath(resolvedPath));
+        if(getBaseFileName(configFileName) === "package.json"){
+            if(!json.name){
+                errors.push(createCompilerDiagnostic({ 
+                    code: 20001, 
+                    category: 
+                    DiagnosticCategory.Error, 
+                    key: "ecmal_project_requires_0_to_be_specified_in_package_json_file",
+                    message: "Ecmal project requires '{0}' to be specified in package.json file"
+                }, "name"));
+            }else{
+                convertEcmalProjectConfiguration(json,getDirectoryPath(resolvedPath));
+            }
         }
 
         let options: CompilerOptions = convertCompilerOptionsFromJsonWorker(json["compilerOptions"], basePath, errors, configFileName);

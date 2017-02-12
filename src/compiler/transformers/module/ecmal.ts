@@ -4,17 +4,29 @@
 namespace ts {
     
     const moduleHelper: EmitHelper = {
-        name: "ecmal:system",
+        name: "ecmal:module",
         scoped: false,
         priority: 1,
         text: `
-            var __export = function (module,key,value){};
             var __module = function (k, v) {};`
     };
-
+    const exportHelper: EmitHelper = {
+        name: "ecmal:export",
+        scoped: false,
+        priority: 1,
+        text: `var __export = function (module,key,value){};`
+    };
     function createModuleHelper(callArguments:Expression[]) {
         return createCall(
             getHelperName("__module"),
+            /*typeArguments*/ undefined,
+            callArguments
+        );
+    }
+    function createExportHelper(context:TransformationContext,callArguments:Expression[]) {
+        context.requestEmitHelper(exportHelper);
+        return createCall(
+            getHelperName("__export"),
             /*typeArguments*/ undefined,
             callArguments
         );
@@ -54,7 +66,7 @@ namespace ts {
         let moduleInfo: ExternalModuleInfo; // ExternalModuleInfo for the current file.
         let systemObject: Identifier; // The export function for the current file.
         let moduleObject: Identifier; // The context object for the current file.
-        let exportFunction: Identifier; // The export function for the current file.
+        //let exportFunction: Identifier; // The export function for the current file.
         let hoistedStatements: Statement[]=[];
         let enclosingBlockScopedContainer: Node;
         let noSubstitution: boolean[]; // Set of nodes for which substitution rules should be ignored.
@@ -113,7 +125,7 @@ namespace ts {
             systemObject = createIdentifier("system");
             exportFunctionsMap[id] = systemObject;
             moduleObject = createIdentifier("module");
-            exportFunction = createIdentifier("__export");
+            //exportFunction = createIdentifier("__export");
             // Add the body of the module.
             const dependencyGroups = collectDependencyGroups(moduleInfo.externalImports);
             const moduleBodyBlock = createSystemModuleBody(node, dependencyGroups);
@@ -156,6 +168,10 @@ namespace ts {
                 ), EmitFlags.NoTrailingComments);
 
             if (!(compilerOptions.outFile || compilerOptions.out)) {
+                /*getEmitHelpers(updated).forEach(h=>{
+                    sys.write(`Module : ${moduleName.text}\n`);
+                    sys.write(`  Helper Used : ${h.scoped} : ${h.name}\n`);
+                })*/
                 moveEmitHelpers(updated, moduleBodyBlock, helper => !helper.scoped);
             }
 
@@ -332,9 +348,7 @@ namespace ts {
         function createSettersArray(dependencyGroups: DependencyGroup[]) {
             const setters: Expression[] = [];
             for (const group of dependencyGroups) {
-                // derive a unique name for parameter from the first named entry in the group
-                const localName = forEach(group.externalImports, i => getLocalNameForExternalImport(i, currentSourceFile));
-                const parameterName = localName ? getGeneratedNameForNode(localName) : createUniqueName("");
+                const parameterName = createIdentifier("ǃ");
                 const statements: Statement[] = [];
                 for (const entry of group.externalImports) {
                     const importVariableName = getLocalNameForExternalImport(entry, currentSourceFile);
@@ -351,9 +365,7 @@ namespace ts {
                             Debug.assert(importVariableName !== undefined);
                             // save import into the local
                             statements.push(
-                                createStatement(
-                                    createAssignment(importVariableName, parameterName)
-                                )
+                                createStatement(createAssignment(importVariableName, parameterName))
                             );
                             break;
 
@@ -364,7 +376,7 @@ namespace ts {
                                 //
                                 // emit as:
                                 //
-                                //  exports_({
+                                //  exports_({π
                                 //     "a": _["a"],
                                 //     "c": _["b"]
                                 //  });
@@ -383,11 +395,7 @@ namespace ts {
 
                                 statements.push(
                                     createStatement(
-                                        createCall(
-                                            exportFunction,
-                                            /*typeArguments*/ undefined,
-                                            [moduleObject,createObjectLiteral(properties, /*multiline*/ true)]
-                                        )
+                                        createExportHelper(context,[moduleObject,createObjectLiteral(properties, /*multiline*/ true)])
                                     )
                                 );
                             }
@@ -398,13 +406,7 @@ namespace ts {
                                 //
                                 //  exportStar(foo_1_1);
                                 statements.push(
-                                    createStatement(
-                                        createCall(
-                                            exportFunction,
-                                            /*typeArguments*/ undefined,
-                                            [moduleObject,parameterName]
-                                        )
-                                    )
+                                    createStatement(createExportHelper(context,[moduleObject,parameterName]))
                                 );
                             }
                             break;
@@ -419,7 +421,7 @@ namespace ts {
                         /*typeParameters*/ undefined,
                         [createParameter(/*decorators*/ undefined, /*modifiers*/ undefined, /*dotDotDotToken*/ undefined, parameterName)],
                         /*type*/ undefined,
-                        createBlock(statements, /*multiLine*/ true)
+                        createBlock(statements)
                     )
                 );
             }
@@ -999,7 +1001,7 @@ namespace ts {
          */
         function createExportExpression(name: Identifier | StringLiteral, value: Expression) {
             const exportName = isIdentifier(name) ? createLiteral(name) : name;
-            return createCall(exportFunction, /*typeArguments*/ undefined, [moduleObject, exportName, value]);
+            return createExportHelper(context,[moduleObject, exportName, value]);
         }
 
         //
@@ -1490,7 +1492,6 @@ namespace ts {
          */
         function substituteExpressionIdentifier(node: Identifier): Expression {
             if (getEmitFlags(node) & EmitFlags.HelperName) {
-                //return createPropertyAccess(createIdentifier("module"), node);
                 return node;
             }
 
