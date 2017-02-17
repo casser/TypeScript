@@ -1,0 +1,8 @@
+{
+    "extends": "../tsconfig-base",
+    "compilerOptions": {
+        "removeComments": true,
+        "outFile": "../../built/local/elp.js",
+        "declaration": true
+    }
+}

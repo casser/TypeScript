@@ -371,6 +371,10 @@ const nodePackageFile = path.join(builtLocalDirectory, "typescript.js");
 const nodeDefinitionsFile = path.join(builtLocalDirectory, "typescript.d.ts");
 const nodeStandaloneDefinitionsFile = path.join(builtLocalDirectory, "typescript_standalone.d.ts");
 
+const ecmalOutDir = "/Users/Sergey/Work/GH/ecmal-ts/out/typescript"
+const ecmalDefOutFile =  path.join(ecmalOutDir, "package.d.ts");
+const ecmalJsOutFile =  path.join(ecmalOutDir, "package.js");
+
 let copyrightContent: string;
 function prependCopyright(outputCopyright: boolean = !useDebugMode) {
     return insert.prepend(outputCopyright ? (copyrightContent || (copyrightContent = fs.readFileSync(copyright).toString())) : "");
@@ -430,6 +434,23 @@ gulp.task(cancellationTokenJs, false, [servicesFile], () => {
         .pipe(prependCopyright())
         .pipe(sourcemaps.write("."))
         .pipe(gulp.dest(builtLocalDirectory));
+});
+
+
+gulp.task('ecmal-dts',[],()=>{
+  return [gulp.src(nodeStandaloneDefinitionsFile)
+    .pipe(insert.transform((content, file) => {
+        file.path = path.resolve(ecmalOutDir,'./package.d.ts');
+        return content.replace(/declare\smodule\s"typescript"\s\{/g,'declare module "typescript/package" {');
+    }))
+    .pipe(gulp.dest(ecmalOutDir)),
+    gulp.src(nodePackageFile)
+    .pipe(insert.transform((content, file) => {
+        file.path = path.resolve(ecmalOutDir,'./package.js');
+        let rx = /\/\/#.*languageService.*\n/g;
+        return `__module("typescript/package",[],function(system,module){\n${content.replace(rx,'')}\n});`;
+    }))
+    .pipe(gulp.dest(ecmalOutDir))]
 });
 
 // typingsInstallerFile.js

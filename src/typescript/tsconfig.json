@@ -4,6 +4,7 @@
         "noImplicitAny": true,
         "noImplicitThis": true,
         "preserveConstEnums": true,
+        "stripInternal": false,
         "pretty": true,
         "module":"ecmal",
         "outFile": "/Users/Sergey/Work/GH/ecmal-ts/out/typescript/compiler.js",
