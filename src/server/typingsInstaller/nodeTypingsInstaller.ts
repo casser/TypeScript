@@ -1,4 +1,4 @@
-﻿/// <reference path="typingsInstaller.ts"/>
+/// <reference path="typingsInstaller.ts"/>
 /// <reference types="node" />
 
 namespace ts.server.typingsInstaller {
@@ -61,9 +61,7 @@ namespace ts.server.typingsInstaller {
         return combinePaths(normalizeSlashes(globalTypingsCacheLocation), `node_modules/${TypesRegistryPackageName}/index.json`);
     }
 
-    type ExecSync = {
-        (command: string, options: { cwd: string, stdio?: "ignore" }): any
-    }
+    type ExecSync = (command: string, options: { cwd: string, stdio?: "ignore" }) => any;
 
     export class NodeTypingsInstaller extends TypingsInstaller {
         private readonly execSync: ExecSync;
