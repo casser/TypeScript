@@ -2570,7 +2570,11 @@ namespace ts {
         const getCanonicalFileName = (f: string) => host.getCanonicalFileName(f);
         const dir = toPath(host.getCommonSourceDirectory(), host.getCurrentDirectory(), getCanonicalFileName);
         const filePath = getNormalizedAbsolutePath(fileName, host.getCurrentDirectory());
-        const relativePath = getRelativePathToDirectoryOrUrl(dir, filePath, dir, getCanonicalFileName, /*isAbsolutePathAnUrl*/ false);
+        let relativePath = getRelativePathToDirectoryOrUrl(dir, filePath, dir, getCanonicalFileName, /*isAbsolutePathAnUrl*/ false);
+        const compilerOptions = host.getCompilerOptions();
+        if(compilerOptions.name){
+            relativePath = normalizePath(combinePaths(compilerOptions.name.toString(),relativePath));
+        }
         return removeFileExtension(relativePath);
     }
 

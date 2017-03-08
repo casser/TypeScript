@@ -3,6 +3,7 @@
 /// <reference path="core.ts"/>
 /// <reference path="diagnosticInformationMap.generated.ts"/>
 /// <reference path="scanner.ts"/>
+/// <reference path="ecmal/config.ts"/>
 
 namespace ts {
     /* @internal */
@@ -14,6 +15,12 @@ namespace ts {
             type: "string",
         },
         compileOnSaveCommandLineOption,
+        {
+            name: "name",
+            shortName: "n",
+            type: "string",
+            description: Diagnostics.Typescript_project_name,
+        },
         {
             name: "declaration",
             shortName: "d",
@@ -872,7 +879,9 @@ namespace ts {
                 wildcardDirectories: {}
             };
         }
-
+        if(getBaseFileName(resolvedPath)=="package.json"){
+            convertPackageJsonToTsConfig(json);
+        }
         let options: CompilerOptions = convertCompilerOptionsFromJsonWorker(json["compilerOptions"], basePath, errors, configFileName);
         // typingOptions has been deprecated and is only supported for backward compatibility purposes.
         // It should be removed in future releases - use typeAcquisition instead.

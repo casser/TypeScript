@@ -741,6 +741,12 @@ namespace ts.server {
         // the newly opened file.
         private findConfigFile(searchPath: NormalizedPath): NormalizedPath {
             while (true) {
+                
+                const pkconfigFileName = asNormalizedPath(combinePaths(searchPath, "package.json"));
+                if (this.host.fileExists(pkconfigFileName)) {
+                    return pkconfigFileName;
+                }
+
                 const tsconfigFileName = asNormalizedPath(combinePaths(searchPath, "tsconfig.json"));
                 if (this.host.fileExists(tsconfigFileName)) {
                     return tsconfigFileName;

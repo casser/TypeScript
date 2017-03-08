@@ -1,5 +1,6 @@
 ﻿/// <reference path="program.ts"/>
 /// <reference path="commandLineParser.ts"/>
+/// <reference path="ecmal/compilers.ts"/>
 
 namespace ts {
     export interface SourceFile {
@@ -157,7 +158,7 @@ namespace ts {
             output += `${ diagnostic.file.fileName }(${ loc.line + 1 },${ loc.character + 1 }): `;
         }
 
-        output += `${ flattenDiagnosticMessageText(diagnostic.messageText, sys.newLine) }${ sys.newLine + sys.newLine + sys.newLine }`;
+        output += `${ flattenDiagnosticMessageText(diagnostic.messageText, sys.newLine) }${sys.newLine}`;
 
         sys.write(output);
     }
@@ -243,11 +244,14 @@ namespace ts {
 
             const fileOrDirectory = normalizePath(commandLine.options.project);
             if (!fileOrDirectory /* current directory "." */ || sys.directoryExists(fileOrDirectory)) {
-                configFileName = combinePaths(fileOrDirectory, "tsconfig.json");
+                configFileName = combinePaths(fileOrDirectory, "package.json");
                 if (!sys.fileExists(configFileName)) {
-                    reportDiagnostic(createCompilerDiagnostic(Diagnostics.Cannot_find_a_tsconfig_json_file_at_the_specified_directory_Colon_0, commandLine.options.project), /* host */ undefined);
-                    return sys.exit(ExitStatus.DiagnosticsPresent_OutputsSkipped);
-                }
+                    configFileName = combinePaths(fileOrDirectory, "tsconfig.json");
+                    if (!sys.fileExists(configFileName)) {
+                        reportDiagnostic(createCompilerDiagnostic(Diagnostics.Cannot_find_a_tsconfig_json_file_at_the_specified_directory_Colon_0, commandLine.options.project), /* host */ undefined);
+                        return sys.exit(ExitStatus.DiagnosticsPresent_OutputsSkipped);
+                    }
+                }                
             }
             else {
                 configFileName = fileOrDirectory;
@@ -288,10 +292,12 @@ namespace ts {
         }
 
         performCompilation();
-
+        
         function parseConfigFile(): ParsedCommandLine {
+            let rewriteConfig = false;
             if (!cachedConfigFileText) {
                 try {
+                    rewriteConfig = getBaseFileName(configFileName)=='package.json';
                     cachedConfigFileText = sys.readFile(configFileName);
                 }
                 catch (e) {
@@ -322,6 +328,10 @@ namespace ts {
                 sys.exit(ExitStatus.DiagnosticsPresent_OutputsSkipped);
                 return;
             }
+            if(rewriteConfig){
+                rewriteConfig = false;
+                writePackageJsonFile(configParseResult);
+            }
             if (isWatchSet(configParseResult.options)) {
                 if (!sys.watchFile) {
                     reportDiagnostic(createCompilerDiagnostic(Diagnostics.The_current_host_does_not_support_the_0_option, "--watch"), /* host */ undefined);
@@ -340,7 +350,7 @@ namespace ts {
             }
             return configParseResult;
         }
-
+        
         // Invoked to perform initial compilation or re-compilation in watch mode
         function performCompilation() {
 
@@ -442,7 +452,6 @@ namespace ts {
             if (fileName && !ts.isSupportedSourceFileName(fileName, compilerOptions)) {
                 return;
             }
-
             startTimerForHandlingDirectoryChanges();
         }
 
@@ -743,6 +752,10 @@ namespace ts {
         }
 
         return;
+    }
+    function writePackageJsonFile(configParseResult:ParsedCommandLine){
+        let {file,json}  = convertProjectOptionsToLibConfig(configParseResult);
+        sys.writeFile(file, JSON.stringify(json, undefined, 4));
     }
 }
 

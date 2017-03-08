@@ -80,7 +80,7 @@ namespace ts {
             // existing identifiers.
             exportFunction = createUniqueName("exports");
             exportFunctionsMap[id] = exportFunction;
-            contextObject = createUniqueName("context");
+            contextObject = createIdentifier("module");
 
             // Add the body of the module.
             const dependencyGroups = collectDependencyGroups(moduleInfo.externalImports);

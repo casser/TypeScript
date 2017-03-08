@@ -3358,5 +3358,9 @@
     "Octal literals are not allowed in enums members initializer. Use the syntax '{0}'.": {
         "category": "Error",
         "code": 8018
+    },
+    "Typescript project name": {
+        "category": "Message",
+        "code": 20001
     }
 }
