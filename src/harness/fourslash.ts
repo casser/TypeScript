@@ -22,6 +22,10 @@
 namespace FourSlash {
     ts.disableIncrementalParsing = false;
 
+    function normalizeNewLines(s: string) {
+        return s.replace(/\r\n/g, "\n");
+    }
+
     // Represents a parsed source file with metadata
     export interface FourSlashFile {
         // The contents of the file (with markers, etc stripped out)
@@ -924,9 +928,13 @@ namespace FourSlash {
             }
 
             function rangeToReferenceEntry(r: Range) {
-                let { isWriteAccess, isDefinition } = (r.marker && r.marker.data) || { isWriteAccess: false, isDefinition: false };
+                let { isWriteAccess, isDefinition, isInString } = (r.marker && r.marker.data) || { isWriteAccess: false, isDefinition: false, isInString: undefined };
                 isWriteAccess = !!isWriteAccess; isDefinition = !!isDefinition;
-                return { fileName: r.fileName, textSpan: { start: r.start, length: r.end - r.start }, isWriteAccess, isDefinition };
+                const result: any = { fileName: r.fileName, textSpan: { start: r.start, length: r.end - r.start }, isWriteAccess, isDefinition };
+                if (isInString !== undefined) {
+                    result.isInString = isInString;
+                }
+                return result;
             }
         }
 
@@ -1851,16 +1859,40 @@ namespace FourSlash {
 
             const unsatisfiedRanges: Range[] = [];
 
+            const delayedErrors: string[] = [];
             for (const range of ranges) {
                 const length = range.end - range.start;
                 const matchingImpl = ts.find(implementations, impl =>
                     range.fileName === impl.fileName && range.start === impl.textSpan.start && length === impl.textSpan.length);
                 if (matchingImpl) {
+                    if (range.marker && range.marker.data) {
+                        const expected = <{ displayParts?: ts.SymbolDisplayPart[], parts: string[], kind?: string }>range.marker.data;
+                        if (expected.displayParts) {
+                            if (!ts.arrayIsEqualTo(expected.displayParts, matchingImpl.displayParts, displayPartIsEqualTo)) {
+                                delayedErrors.push(`Mismatched display parts: expected ${JSON.stringify(expected.displayParts)}, actual ${JSON.stringify(matchingImpl.displayParts)}`);
+                            }
+                        }
+                        else if (expected.parts) {
+                            const actualParts = matchingImpl.displayParts.map(p => p.text);
+                            if (!ts.arrayIsEqualTo(expected.parts, actualParts)) {
+                                delayedErrors.push(`Mismatched non-tagged display parts: expected ${JSON.stringify(expected.parts)}, actual ${JSON.stringify(actualParts)}`);
+                            }
+                        }
+                        if (expected.kind !== undefined) {
+                            if (expected.kind !== matchingImpl.kind) {
+                                delayedErrors.push(`Mismatched kind: expected ${JSON.stringify(expected.kind)}, actual ${JSON.stringify(matchingImpl.kind)}`);
+                            }
+                        }
+                    }
+
                     matchingImpl.matched = true;
                 }
                 else {
                     unsatisfiedRanges.push(range);
                 }
+            }
+            if (delayedErrors.length) {
+                this.raiseError(delayedErrors.join("\n"));
             }
 
             const unmatchedImplementations = implementations.filter(impl => !impl.matched);
@@ -1885,6 +1917,10 @@ namespace FourSlash {
 
             function implementationsAreEqual(a: ImplementationLocationInformation, b: ImplementationLocationInformation) {
                 return a.fileName === b.fileName && TestState.textSpansEqual(a.textSpan, b.textSpan);
+            }
+
+            function displayPartIsEqualTo(a: ts.SymbolDisplayPart, b: ts.SymbolDisplayPart): boolean {
+                return a.kind === b.kind && a.text === b.text;
             }
         }
 
@@ -1958,8 +1994,7 @@ namespace FourSlash {
 
         public verifyCurrentFileContent(text: string) {
             const actual = this.getFileContent(this.activeFile.fileName);
-            const replaceNewlines = (str: string) => str.replace(/\r\n/g, "\n");
-            if (replaceNewlines(actual) !== replaceNewlines(text)) {
+            if (normalizeNewLines(actual) !== normalizeNewLines(text)) {
                 throw new Error("verifyCurrentFileContent\n" +
                     "\tExpected: \"" + text + "\"\n" +
                     "\t  Actual: \"" + actual + "\"");
@@ -2135,7 +2170,7 @@ namespace FourSlash {
             const actualText = this.rangeText(ranges[0]);
 
             const result = includeWhiteSpace
-                ? actualText === expectedText
+                ? normalizeNewLines(actualText) === normalizeNewLines(expectedText)
                 : this.removeWhitespace(actualText) === this.removeWhitespace(expectedText);
 
             if (!result) {
@@ -2185,7 +2220,7 @@ namespace FourSlash {
                     continue;
                 }
 
-                const newActions = this.languageService.getCodeFixesAtPosition(fileName, diagnostic.start, diagnostic.length, [diagnostic.code]);
+                const newActions = this.languageService.getCodeFixesAtPosition(fileName, diagnostic.start, diagnostic.length, [diagnostic.code], this.formatCodeSettings);
                 if (newActions && newActions.length) {
                     actions = actions ? actions.concat(newActions) : newActions;
                 }
