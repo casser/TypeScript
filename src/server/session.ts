@@ -19,12 +19,6 @@ namespace ts.server {
         resetRequest: () => void 0
     };
 
-    function hrTimeToMilliseconds(time: number[]): number {
-        const seconds = time[0];
-        const nanoseconds = time[1];
-        return ((1e9 * seconds) + nanoseconds) / 1000000.0;
-    }
-
     function shouldSkipSematicCheck(project: Project) {
         if (project.getCompilerOptions().skipLibCheck !== undefined) {
             return false;
@@ -193,13 +187,27 @@ namespace ts.server {
     }
 
     export function formatMessage<T extends protocol.Message>(msg: T, logger: server.Logger, byteLength: (s: string, encoding: string) => number, newLine: string): string {
-        const verboseLogging = logger.hasLevel(LogLevel.verbose);
-
         const json = JSON.stringify(msg);
-        if (verboseLogging) {
-            logger.info(msg.type + ": " + json);
+        if(msg.type=='event'){
+            let evn:protocol.Event = msg as any;
+            logger.info('Event',{
+                seq         : evn.seq,
+                cmd         : evn.event,
+                '<--$debug' : json,
+                arg$trace   : evn.body
+            });
         }
-
+        if(msg.type=='response'){
+            let res:protocol.Response = msg as any;
+            logger.info('Response',{
+                seq         :`${res.request_seq}:${res.seq}`,
+                success     : res.success,
+                cmd         : res.command,
+                '<--$debug' : json,
+                arg$trace   : res.body,
+               
+            });
+        }
         const len = byteLength(json, "utf8");
         return `Content-Length: ${1 + len}\r\n\r\n${json}${newLine}`;
     }
@@ -328,18 +336,18 @@ namespace ts.server {
         private errorCheck: MultistepOperation;
 
         private eventHander: ProjectServiceEventHandler;
-
+        protected logger: Logger;
+        
         constructor(
             private host: ServerHost,
             private readonly cancellationToken: ServerCancellationToken,
             useSingleInferredProject: boolean,
             protected readonly typingsInstaller: ITypingsInstaller,
             private byteLength: (buf: string, encoding?: string) => number,
-            private hrtime: (start?: number[]) => number[],
-            protected logger: Logger,
             protected readonly canUseEvents: boolean,
             eventHandler?: ProjectServiceEventHandler) {
 
+            this.logger = Logger.get('Session');
             this.eventHander = canUseEvents
                 ? eventHandler || (event => this.defaultEventHandler(event))
                 : undefined;
@@ -353,8 +361,8 @@ namespace ts.server {
                 isCancellationRequested: () => cancellationToken.isCancellationRequested()
             };
             this.errorCheck = new MultistepOperation(multistepOperationHost);
-            this.projectService = new ProjectService(host, logger, cancellationToken, useSingleInferredProject, typingsInstaller, this.eventHander);
-            this.gcTimer = new GcTimer(host, /*delay*/ 7000, logger);
+            this.projectService = new ProjectService(host, cancellationToken, useSingleInferredProject, typingsInstaller, this.eventHander);
+            this.gcTimer = new GcTimer(host, /*delay*/ 7000, this.logger.child({name:'Session.gc'}));
         }
 
         private sendRequestCompletedEvent(requestId: number): void {
@@ -396,13 +404,15 @@ namespace ts.server {
                     msg += "\n" + (<StackTraceError>err).stack;
                 }
             }
-            this.logger.msg(msg, Msg.Err);
+            this.logger.error(msg);
         }
 
         public send(msg: protocol.Message) {
             if (msg.type === "event" && !this.canUseEvents) {
-                if (this.logger.hasLevel(LogLevel.verbose)) {
-                    this.logger.info(`Session does not support events: ignored event: ${JSON.stringify(msg)}`);
+                if (this.logger.hasLevel(LogLevel.DEBUG)) {
+                    this.logger.debug(`Session does not support events: ignored event:`,{
+                        ignored_event : JSON.stringify(msg)
+                    });
                 }
                 return;
             }
@@ -1815,7 +1825,9 @@ namespace ts.server {
                 return this.executeWithRequestId(request.seq, () => handler(request));
             }
             else {
-                this.logger.msg(`Unrecognized JSON command: ${JSON.stringify(request)}`, Msg.Err);
+                this.logger.error(`Unrecognized JSON command`, {
+                    request : JSON.stringify(request)
+                });
                 this.output(undefined, CommandNames.Unknown, request.seq, `Unrecognized JSON command: ${request.command}`);
                 return { responseRequired: false };
             }
@@ -1823,33 +1835,26 @@ namespace ts.server {
 
         public onMessage(message: string) {
             this.gcTimer.scheduleCollect();
-            let start: number[];
-            if (this.logger.hasLevel(LogLevel.requestTime)) {
-                start = this.hrtime();
-                if (this.logger.hasLevel(LogLevel.verbose)) {
-                    this.logger.info(`request: ${message}`);
-                }
-            }
-
             let request: protocol.Request;
             try {
                 request = <protocol.Request>JSON.parse(message);
+                let start = this.logger.info(`Request`,{
+                    seq         : request.seq,
+                    cmd         : request.command,                   
+                    '-->$debug' : message,
+                    arg$trace   : request.arguments,
+                });
                 const {response, responseRequired} = this.executeCommand(request);
-
-                if (this.logger.hasLevel(LogLevel.requestTime)) {
-                    const elapsedTime = hrTimeToMilliseconds(this.hrtime(start)).toFixed(4);
-                    if (responseRequired) {
-                        this.logger.perftrc(`${request.seq}::${request.command}: elapsed time (in milliseconds) ${elapsedTime}`);
-                    }
-                    else {
-                        this.logger.perftrc(`${request.seq}::${request.command}: async elapsed time (in milliseconds) ${elapsedTime}`);
-                    }
-                }
-
+                this.logger.warn(`Performance`,{
+                    ms$time : start,
+                    seq     : request.seq,
+                    async   : responseRequired?"Y":"N",
+                    cmd     : request.command                       
+                });
                 if (response) {
                     this.output(response, request.command, request.seq);
-                }
-                else if (responseRequired) {
+                } else
+                if (responseRequired) {
                     this.output(undefined, request.command, request.seq, "No content available.");
                 }
             }

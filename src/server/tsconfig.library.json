@@ -25,6 +25,7 @@
         "types.ts",
         "typingsCache.ts",
         "utilities.ts",
+        "logger.ts",
         "../services/shims.ts",
         "../services/utilities.ts"
     ]

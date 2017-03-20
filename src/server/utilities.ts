@@ -2,36 +2,8 @@
 /// <reference path="shared.ts" />
 
 namespace ts.server {
-    export enum LogLevel {
-        terse,
-        normal,
-        requestTime,
-        verbose
-    }
-
+   
     export const emptyArray: ReadonlyArray<any> = [];
-
-    export interface Logger {
-        close(): void;
-        hasLevel(level: LogLevel): boolean;
-        loggingEnabled(): boolean;
-        perftrc(s: string): void;
-        info(s: string): void;
-        startGroup(): void;
-        endGroup(): void;
-        msg(s: string, type?: Msg.Types): void;
-        getLogFileName(): string;
-    }
-
-    export namespace Msg {
-        export type Err = "Err";
-        export const Err: Err = "Err";
-        export type Info = "Info";
-        export const Info: Info = "Info";
-        export type Perf = "Perf";
-        export const Perf: Perf = "Perf";
-        export type Types = Err | Info | Perf;
-    }
 
     function getProjectRootPath(project: Project): Path {
         switch (project.projectKind) {
@@ -225,17 +197,14 @@ namespace ts.server {
             }
             this.timerId = this.host.setTimeout(GcTimer.run, this.delay, this);
         }
-
         private static run(self: GcTimer) {
             self.timerId = undefined;
-
-            const log = self.logger.hasLevel(LogLevel.requestTime);
+            const log = self.logger.hasLevel(LogLevel.WARN);
             const before = log && self.host.getMemoryUsage();
-
             self.host.gc();
             if (log) {
                 const after = self.host.getMemoryUsage();
-                self.logger.perftrc(`GC::before ${before}, after ${after}`);
+                self.logger.warn(`GC::before ${before}, after ${after}`);
             }
         }
     }

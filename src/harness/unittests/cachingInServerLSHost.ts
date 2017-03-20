@@ -52,19 +52,9 @@ namespace ts {
     }
 
     function createProject(rootFile: string, serverHost: server.ServerHost): { project: server.Project, rootScriptInfo: server.ScriptInfo } {
-        const logger: server.Logger = {
-            close: noop,
-            hasLevel: () => false,
-            loggingEnabled: () => false,
-            perftrc: noop,
-            info: noop,
-            startGroup: noop,
-            endGroup: noop,
-            msg: noop,
-            getLogFileName: (): string => undefined
-        };
+        
 
-        const projectService = new server.ProjectService(serverHost, logger, { isCancellationRequested: () => false }, /*useOneInferredProject*/ false, /*typingsInstaller*/ undefined);
+        const projectService = new server.ProjectService(serverHost, { isCancellationRequested: () => false }, /*useOneInferredProject*/ false, /*typingsInstaller*/ undefined);
         const rootScriptInfo = projectService.getOrCreateScriptInfo(rootFile, /* openedByClient */true, /*containingProject*/ undefined);
         const project = projectService.createInferredProjectWithRootFileIfNecessary(rootScriptInfo);
         project.setCompilerOptions({ module: ts.ModuleKind.AMD } );

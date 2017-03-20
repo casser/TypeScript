@@ -28,17 +28,7 @@ namespace ts.server {
         createHash: s => s
     };
 
-    const mockLogger: Logger = {
-        close: noop,
-        hasLevel(): boolean { return false; },
-        loggingEnabled(): boolean { return false; },
-        perftrc: noop,
-        info: noop,
-        startGroup: noop,
-        endGroup: noop,
-        msg: noop,
-        getLogFileName: (): string => undefined
-    };
+   
 
     class TestSession extends Session {
         getProjectService() {
@@ -51,7 +41,7 @@ namespace ts.server {
         let lastSent: protocol.Message;
 
         beforeEach(() => {
-            session = new TestSession(mockHost, nullCancellationToken, /*useOneInferredProject*/ false, /*typingsInstaller*/ undefined, Utils.byteLength, process.hrtime, mockLogger, /*canUseEvents*/ true);
+            session = new TestSession(mockHost, nullCancellationToken, /*useOneInferredProject*/ false, /*typingsInstaller*/ undefined, Utils.byteLength, /*canUseEvents*/ true);
             session.send = (msg: protocol.Message) => {
                 lastSent = msg;
             };
@@ -318,7 +308,7 @@ namespace ts.server {
             lastSent: protocol.Message;
             customHandler = "testhandler";
             constructor() {
-                super(mockHost, nullCancellationToken, /*useOneInferredProject*/ false, /*typingsInstaller*/ undefined, Utils.byteLength, process.hrtime, mockLogger, /*canUseEvents*/ true);
+                super(mockHost, nullCancellationToken, /*useOneInferredProject*/ false, /*typingsInstaller*/ undefined, Utils.byteLength, /*canUseEvents*/ true);
                 this.addProtocolHandler(this.customHandler, () => {
                     return { response: undefined, responseRequired: true };
                 });
@@ -376,7 +366,7 @@ namespace ts.server {
         class InProcSession extends Session {
             private queue: protocol.Request[] = [];
             constructor(private client: InProcClient) {
-                super(mockHost, nullCancellationToken, /*useOneInferredProject*/ false, /*typingsInstaller*/ undefined, Utils.byteLength, process.hrtime, mockLogger, /*canUseEvents*/ true);
+                super(mockHost, nullCancellationToken, /*useOneInferredProject*/ false, /*typingsInstaller*/ undefined, Utils.byteLength, /*canUseEvents*/ true);
                 this.addProtocolHandler("echo", (req: protocol.Request) => ({
                     response: req.arguments,
                     responseRequired: true

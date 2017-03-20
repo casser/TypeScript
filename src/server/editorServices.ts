@@ -6,6 +6,7 @@
 /// <reference path="lsHost.ts"/>
 /// <reference path="project.ts"/>
 /// <reference path="typingsCache.ts"/>
+/// <reference path="logger.ts"/>
 
 namespace ts.server {
     export const maxProgramSizeForNonTsFiles = 20 * 1024 * 1024;
@@ -265,15 +266,17 @@ namespace ts.server {
 
         public lastDeletedFile: ScriptInfo;
 
-        constructor(public readonly host: ServerHost,
-            public readonly logger: Logger,
+        public logger:Logger;
+
+        constructor (
+            public readonly host: ServerHost,
             public readonly cancellationToken: HostCancellationToken,
             public readonly useSingleInferredProject: boolean,
             readonly typingsInstaller: ITypingsInstaller = nullTypingsInstaller,
             private readonly eventHandler?: ProjectServiceEventHandler) {
 
             Debug.assert(!!host.createHash, "'ServerHost.createHash' is required for ProjectService");
-
+            this.logger = Logger.get('ProjectService');
             this.toCanonicalFileName = createGetCanonicalFileName(host.useCaseSensitiveFileNames);
             this.directoryWatchers = new DirectoryWatchers(this);
             this.throttledOperations = new ThrottledOperations(host);
@@ -527,7 +530,9 @@ namespace ts.server {
 
         private onConfigChangedForConfiguredProject(project: ConfiguredProject) {
             const configFileName = project.getConfigFilePath();
-            this.logger.info(`Config file changed: ${configFileName}`);
+            this.logger.info(`Config file changed`,{
+                file:configFileName
+            });
             const configFileErrors = this.updateConfiguredProject(project);
             this.reportConfigFileDiagnostics(configFileName, configFileErrors, /*triggerFile*/ configFileName);
             this.refreshInferredProjects();
@@ -539,14 +544,18 @@ namespace ts.server {
         private onConfigFileAddedForInferredProject(fileName: string) {
             // TODO: check directory separators
             if (getBaseFileName(fileName) != "tsconfig.json") {
-                this.logger.info(`${fileName} is not tsconfig.json`);
+                this.logger.info(`Not a tsconfig.json file`,{
+                    file:fileName
+                });
                 return;
             }
 
             const { configFileErrors } = this.convertConfigFileContentToProjectOptions(fileName);
             this.reportConfigFileDiagnostics(fileName, configFileErrors, fileName);
 
-            this.logger.info(`Detected newly added tsconfig file: ${fileName}`);
+            this.logger.info(`Detected newly added tsconfig file`,{
+                file : fileName
+            });
             this.reloadProjects();
         }
 
@@ -702,7 +711,10 @@ namespace ts.server {
          */
         private openOrUpdateConfiguredProjectForFile(fileName: NormalizedPath): OpenConfiguredProjectResult {
             const searchPath = getDirectoryPath(fileName);
-            this.logger.info(`Search path: ${searchPath}`);
+            this.logger.info(`Search config file in`,{
+                dir  : searchPath,
+                file : getBaseFileName(fileName)
+            });
 
             // check if this file is already included in one of external projects
             const configFileName = this.findConfigFile(asNormalizedPath(searchPath));
@@ -711,7 +723,9 @@ namespace ts.server {
                 return {};
             }
 
-            this.logger.info(`Config file name: ${configFileName}`);
+            this.logger.info(`Config file found`,{
+                file:configFileName
+            });
 
             const project = this.findConfiguredProjectByProjectName(configFileName);
             if (!project) {
@@ -722,7 +736,9 @@ namespace ts.server {
 
                 // even if opening config file was successful, it could still
                 // contain errors that were tolerated.
-                this.logger.info(`Opened configuration file ${configFileName}`);
+                this.logger.info(`Opened configuration file`,{
+                    file:configFileName
+                });
                 if (errors && errors.length > 0) {
                     return { configFileName, configFileErrors: errors };
                 }
@@ -761,30 +777,24 @@ namespace ts.server {
         }
 
         private printProjects() {
-            if (!this.logger.hasLevel(LogLevel.verbose)) {
+            if (!this.logger.hasLevel(LogLevel.DEBUG)) {
                 return;
             }
-
-            this.logger.startGroup();
-
             let counter = 0;
             counter = printProjects(this.logger, this.externalProjects, counter);
             counter = printProjects(this.logger, this.configuredProjects, counter);
             counter = printProjects(this.logger, this.inferredProjects, counter);
-
-            this.logger.info("Open files: ");
-            for (const rootFile of this.openFiles) {
-                this.logger.info(rootFile.fileName);
-            }
-
-            this.logger.endGroup();
-
+            this.logger.info("Open files",{
+                files : this.openFiles.map(f=>f.fileName)
+            });
             function printProjects(logger: Logger, projects: Project[], counter: number) {
                 for (const project of projects) {
                     project.updateGraph();
-                    logger.info(`Project '${project.getProjectName()}' (${ProjectKind[project.projectKind]}) ${counter}`);
-                    logger.info(project.filesToString());
-                    logger.info("-----------------------------------------------");
+                    logger.info(`Project(${counter})`,{
+                        kind    : ProjectKind[project.projectKind],
+                        project : project.getProjectName(),
+                        files   : project.filesToString().trim().split('\n')
+                    });
                     counter++;
                 }
                 return counter;
