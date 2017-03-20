@@ -1,0 +1,27 @@
+{
+    "extends": "../src/tsconfig-base",
+    "compilerOptions": {
+        "removeComments": true,
+        "lib": ["es6"],
+        "outFile": "./lib/elp.js",
+        "sourceMap": false,
+        "preserveConstEnums": true,
+        "types": ["node"]
+    },
+    "files": [
+        "../src/services/shims.ts",
+        "../src/services/utilities.ts",
+        "../src/server/shared.ts",
+        "../src/server/utilities.ts",
+        "../src/server/scriptVersionCache.ts",
+        "../src/server/scriptInfo.ts",
+        "../src/server/lsHost.ts",
+        "../src/server/typingsCache.ts",
+        "../src/server/project.ts",
+        "../src/server/editorServices.ts",
+        "../src/server/protocol.ts",
+        "../src/server/session.ts",
+        "../src/server/logger.ts",
+        "../src/server/server.ts"
+    ]
+}

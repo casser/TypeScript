@@ -1,0 +1,9 @@
+{
+    "$schema": "http://json.schemastore.org/tsconfig",
+    "extends": "../../src/server/cancellationToken/tsconfig.json",
+    "compilerOptions": {
+        "outDir": "../lib/typescript",
+        "declaration": false,
+        "sourceMap": false
+    }
+}

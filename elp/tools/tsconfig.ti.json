@@ -1,0 +1,9 @@
+{
+    "$schema": "http://json.schemastore.org/tsconfig",
+    "extends": "../../src/server/typingsInstaller/tsconfig.json",
+    "compilerOptions": {
+        "outFile": "../lib/typescript/typingsInstaller.js",
+        "declaration": false,
+        "sourceMap": false
+    }
+}

@@ -1,0 +1,9 @@
+{
+    "$schema": "http://json.schemastore.org/tsconfig",
+    "extends": "../../src/server/watchGuard/tsconfig.json",
+    "compilerOptions": {
+        "outFile": "../lib/typescript/watchGuard.js",
+        "declaration": false,
+        "sourceMap": false
+    }
+}

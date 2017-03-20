@@ -1,0 +1,9 @@
+{
+    "$schema": "http://json.schemastore.org/tsconfig",
+    "extends": "../../src/compiler/tsconfig.json",
+    "compilerOptions": {
+        "outFile": "../lib/typescript/tsc.js",
+        "declaration": false,
+        "sourceMap": false
+    }
+}
