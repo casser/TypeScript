@@ -266,7 +266,7 @@ namespace ts.server {
 
         public lastDeletedFile: ScriptInfo;
 
-        public logger:Logger;
+        public logger: Logger;
 
         constructor (
             public readonly host: ServerHost,
@@ -530,8 +530,8 @@ namespace ts.server {
 
         private onConfigChangedForConfiguredProject(project: ConfiguredProject) {
             const configFileName = project.getConfigFilePath();
-            this.logger.info(`Config file changed`,{
-                file:configFileName
+            this.logger.info(`Config file changed`, {
+                file: configFileName
             });
             const configFileErrors = this.updateConfiguredProject(project);
             this.reportConfigFileDiagnostics(configFileName, configFileErrors, /*triggerFile*/ configFileName);
@@ -544,8 +544,8 @@ namespace ts.server {
         private onConfigFileAddedForInferredProject(fileName: string) {
             // TODO: check directory separators
             if (getBaseFileName(fileName) != "tsconfig.json") {
-                this.logger.info(`Not a tsconfig.json file`,{
-                    file:fileName
+                this.logger.info(`Not a tsconfig.json file`, {
+                    file: fileName
                 });
                 return;
             }
@@ -553,7 +553,7 @@ namespace ts.server {
             const { configFileErrors } = this.convertConfigFileContentToProjectOptions(fileName);
             this.reportConfigFileDiagnostics(fileName, configFileErrors, fileName);
 
-            this.logger.info(`Detected newly added tsconfig file`,{
+            this.logger.info(`Detected newly added tsconfig file`, {
                 file : fileName
             });
             this.reloadProjects();
@@ -711,7 +711,7 @@ namespace ts.server {
          */
         private openOrUpdateConfiguredProjectForFile(fileName: NormalizedPath): OpenConfiguredProjectResult {
             const searchPath = getDirectoryPath(fileName);
-            this.logger.info(`Search config file in`,{
+            this.logger.info(`Search config file in`, {
                 dir  : searchPath,
                 file : getBaseFileName(fileName)
             });
@@ -723,8 +723,8 @@ namespace ts.server {
                 return {};
             }
 
-            this.logger.info(`Config file found`,{
-                file:configFileName
+            this.logger.info(`Config file found`, {
+                file: configFileName
             });
 
             const project = this.findConfiguredProjectByProjectName(configFileName);
@@ -736,8 +736,8 @@ namespace ts.server {
 
                 // even if opening config file was successful, it could still
                 // contain errors that were tolerated.
-                this.logger.info(`Opened configuration file`,{
-                    file:configFileName
+                this.logger.info(`Opened configuration file`, {
+                    file: configFileName
                 });
                 if (errors && errors.length > 0) {
                     return { configFileName, configFileErrors: errors };
@@ -784,13 +784,13 @@ namespace ts.server {
             counter = printProjects(this.logger, this.externalProjects, counter);
             counter = printProjects(this.logger, this.configuredProjects, counter);
             counter = printProjects(this.logger, this.inferredProjects, counter);
-            this.logger.info("Open files",{
-                files : this.openFiles.map(f=>f.fileName)
+            this.logger.info("Open files", {
+                files : this.openFiles.map(f => f.fileName)
             });
             function printProjects(logger: Logger, projects: Project[], counter: number) {
                 for (const project of projects) {
                     project.updateGraph();
-                    logger.info(`Project(${counter})`,{
+                    logger.info(`Project(${counter})`, {
                         kind    : ProjectKind[project.projectKind],
                         project : project.getProjectName(),
                         files   : project.filesToString().trim().split("\n")

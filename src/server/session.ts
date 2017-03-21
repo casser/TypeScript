@@ -181,24 +181,24 @@ namespace ts.server {
 
     export function formatMessage<T extends protocol.Message>(msg: T, logger: server.Logger, byteLength: (s: string, encoding: string) => number, newLine: string): string {
         const json = JSON.stringify(msg);
-        if(msg.type=='event'){
-            let evn:protocol.Event = msg as any;
-            logger.info('Event',{
+        if (msg.type == "event") {
+            const evn: protocol.Event = msg as any;
+            logger.info("Event", {
                 seq         : evn.seq,
                 cmd         : evn.event,
-                '<--$debug' : json,
+                "<--$debug" : json,
                 arg$trace   : evn.body
             });
         }
-        if(msg.type=='response'){
-            let res:protocol.Response = msg as any;
-            logger.info('Response',{
-                seq         :`${res.request_seq}:${res.seq}`,
+        if (msg.type == "response") {
+            const res: protocol.Response = msg as any;
+            logger.info("Response", {
+                seq         : `${res.request_seq}:${res.seq}`,
                 success     : res.success,
                 cmd         : res.command,
-                '<--$debug' : json,
+                "<--$debug" : json,
                 arg$trace   : res.body,
-               
+
             });
         }
         const len = byteLength(json, "utf8");
@@ -330,7 +330,7 @@ namespace ts.server {
 
         private eventHander: ProjectServiceEventHandler;
         protected logger: Logger;
-        
+
         constructor(
             private host: ServerHost,
             private readonly cancellationToken: ServerCancellationToken,
@@ -340,7 +340,7 @@ namespace ts.server {
             protected readonly canUseEvents: boolean,
             eventHandler?: ProjectServiceEventHandler) {
 
-            this.logger = Logger.get('Session');
+            this.logger = Logger.get("Session");
             this.eventHander = canUseEvents
                 ? eventHandler || (event => this.defaultEventHandler(event))
                 : undefined;
@@ -355,7 +355,7 @@ namespace ts.server {
             };
             this.errorCheck = new MultistepOperation(multistepOperationHost);
             this.projectService = new ProjectService(host, cancellationToken, useSingleInferredProject, typingsInstaller, this.eventHander);
-            this.gcTimer = new GcTimer(host, /*delay*/ 7000, this.logger.child({name:'Session.gc'}));
+            this.gcTimer = new GcTimer(host, /*delay*/ 7000, this.logger.child({ name: "Session.gc" }));
         }
 
         private sendRequestCompletedEvent(requestId: number): void {
@@ -403,7 +403,7 @@ namespace ts.server {
         public send(msg: protocol.Message) {
             if (msg.type === "event" && !this.canUseEvents) {
                 if (this.logger.hasLevel(LogLevel.DEBUG)) {
-                    this.logger.debug(`Session does not support events: ignored event:`,{
+                    this.logger.debug(`Session does not support events: ignored event:`, {
                         ignored_event : JSON.stringify(msg)
                     });
                 }
@@ -1831,18 +1831,18 @@ namespace ts.server {
             let request: protocol.Request;
             try {
                 request = <protocol.Request>JSON.parse(message);
-                let start = this.logger.info(`Request`,{
+                const start = this.logger.info(`Request`, {
                     seq         : request.seq,
-                    cmd         : request.command,                   
-                    '-->$debug' : message,
+                    cmd         : request.command,
+                    "-->$debug" : message,
                     arg$trace   : request.arguments,
                 });
                 const {response, responseRequired} = this.executeCommand(request);
-                this.logger.warn(`Performance`,{
+                this.logger.warn(`Performance`, {
                     ms$time : start,
                     seq     : request.seq,
-                    async   : responseRequired?"Y":"N",
-                    cmd     : request.command                       
+                    async   : responseRequired ? "Y" : "N",
+                    cmd     : request.command
                 });
                 if (response) {
                     this.output(response, request.command, request.seq);

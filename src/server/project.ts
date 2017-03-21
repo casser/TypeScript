@@ -842,10 +842,10 @@ namespace ts.server {
 
         /** Used for configured projects which may have multiple open roots */
         openRefCount = 0;
-        private get logger():Logger{
-            return Object.defineProperty(this,'logger',{
+        private get logger(): Logger{
+            return Object.defineProperty(this, "logger", {
                 value : this.projectService.logger.child({
-                    name : 'ConfiguredProject'
+                    name : "ConfiguredProject"
                 })
             }).logger;
         }
@@ -956,9 +956,9 @@ namespace ts.server {
             const roots = this.getEffectiveTypeRoots();
             const watchers: FileWatcher[] = [];
             for (const root of roots) {
-                this.logger.info(`Add type root watcher for`,{
-                    recursive:'N',
-                    dir:root
+                this.logger.info(`Add type root watcher for`, {
+                    recursive: "N",
+                    dir: root
                 });
                 watchers.push(this.projectService.host.watchDirectory(root, path => callback(this, path), /*recursive*/ false));
             }
@@ -970,9 +970,9 @@ namespace ts.server {
                 return;
             }
             const directoryToWatch = getDirectoryPath(this.getConfigFilePath());
-            this.logger.info(`Add config watcher for`,{
-                recursive:'Y',
-                dir:directoryToWatch
+            this.logger.info(`Add config watcher for`, {
+                recursive: "Y",
+                dir: directoryToWatch
             });
             this.directoryWatcher = this.projectService.host.watchDirectory(directoryToWatch, path => callback(this, path), /*recursive*/ true);
         }
@@ -987,8 +987,8 @@ namespace ts.server {
             this.wildcardDirectories.forEach((flag, directory) => {
                 if (comparePaths(configDirectoryPath, directory, ".", !this.projectService.host.useCaseSensitiveFileNames) !== Comparison.EqualTo) {
                     const recursive = (flag & WatchDirectoryFlags.Recursive) !== 0;
-                    this.logger.info(`Add wildcard directory watcher`,{
-                        recursive   : recursive?'Y':'N',
+                    this.logger.info(`Add wildcard directory watcher`, {
+                        recursive   : recursive ? "Y" : "N",
                         dir         : directory
                     });
                     this.directoriesWatchedForWildcards.set(directory, this.projectService.host.watchDirectory(

@@ -139,7 +139,7 @@ namespace ts.server {
             readonly globalTypingsCacheLocation: string,
             private newLine: string) {
             this.throttledOperations = new ThrottledOperations(host);
-            this.logger = Logger.get('NodeTypingsInstaller')
+            this.logger = Logger.get("NodeTypingsInstaller");
             if (eventPort) {
                 const s = net.connect({ port: eventPort }, () => {
                     this.socket = s;
@@ -207,15 +207,15 @@ namespace ts.server {
 
         enqueueInstallTypingsRequest(project: Project, typeAcquisition: TypeAcquisition, unresolvedImports: SortedReadonlyArray<string>): void {
             const request = createInstallTypingsRequest(project, typeAcquisition, unresolvedImports);
-            if(this.logger.hasLevel(LogLevel.DEBUG)){
-                this.logger.debug(`Scheduling throttled operation`,{
+            if (this.logger.hasLevel(LogLevel.DEBUG)) {
+                this.logger.debug(`Scheduling throttled operation`, {
                     request : JSON.stringify(request)
                 });
             }
 
             this.throttledOperations.schedule(project.getProjectName(), /*ms*/ 250, () => {
-                if(this.logger.hasLevel(LogLevel.DEBUG)){
-                    this.logger.debug(`Sending request`,{
+                if (this.logger.hasLevel(LogLevel.DEBUG)) {
+                    this.logger.debug(`Sending request`, {
                         request : JSON.stringify(request)
                     });
                 }
@@ -225,7 +225,7 @@ namespace ts.server {
 
         private handleMessage(response: SetTypings | InvalidateCachedTypings | BeginInstallTypes | EndInstallTypes | InitializationFailedResponse) {
             if (this.logger.hasLevel(LogLevel.DEBUG)) {
-                this.logger.debug(`Received response`,{
+                this.logger.debug(`Received response`, {
                     response : JSON.stringify(response)
                 });
             }
@@ -359,7 +359,7 @@ namespace ts.server {
                         logEnv.file = stripQuotes(value);
                         break;
                     case "-level":
-                        if(value){
+                        if (value) {
                             logEnv.detailLevel = getLogLevel(value);
                         }
                     break;
@@ -375,18 +375,18 @@ namespace ts.server {
         return logEnv;
     }
 
-    function getLogLevel(level: string):LogLevel {
-        switch(level){
-            case 'terse'        :
-            case 'FATAL'        : return LogLevel.FATAL;
-            case 'ERROR'        : return LogLevel.ERROR;
-            case 'WARN'         : return LogLevel.WARN;
-            case 'normal'       :
-            case 'INFO'         : return LogLevel.INFO;
-            case 'requestTime'  :
-            case 'DEBUG'        : return LogLevel.DEBUG;
-            case 'verbose'      :
-            case 'TRACE'        : return LogLevel.TRACE;
+    function getLogLevel(level: string): LogLevel {
+        switch (level) {
+            case "terse"        :
+            case "FATAL"        : return LogLevel.FATAL;
+            case "ERROR"        : return LogLevel.ERROR;
+            case "WARN"         : return LogLevel.WARN;
+            case "normal"       :
+            case "INFO"         : return LogLevel.INFO;
+            case "requestTime"  :
+            case "DEBUG"        : return LogLevel.DEBUG;
+            case "verbose"      :
+            case "TRACE"        : return LogLevel.TRACE;
             default             : return LogLevel.NONE;
         }
     }
@@ -397,14 +397,14 @@ namespace ts.server {
         const cmdLogVerbosity  = findArgument("--logVerbosity");
         const envLogOptions = parseLoggingEnvironmentString(process.env["TSS_LOG"]);
         const logFileName = cmdLineLogFileName
-            ? stripQuotes(cmdLineLogFileName) 
+            ? stripQuotes(cmdLineLogFileName)
             : envLogOptions.logToFile
                 ? envLogOptions.file || (__dirname + "/.log" + process.pid.toString())
                 : undefined;
 
         const logVerbosity = cmdLogVerbosity ? getLogLevel(cmdLogVerbosity) : envLogOptions.detailLevel;
-        const logger = Logger.init(logVerbosity,envLogOptions.traceToConsole,logFileName);
-        logger.info(`Starting ${__filename}`,{
+        const logger = Logger.init(logVerbosity, envLogOptions.traceToConsole, logFileName);
+        logger.info(`Starting ${__filename}`, {
             pid : process.pid,
             arg : process.argv,
             cwd : process.cwd(),

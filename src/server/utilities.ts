@@ -2,7 +2,7 @@
 /// <reference path="shared.ts" />
 
 namespace ts.server {
-   
+
     export const emptyArray: ReadonlyArray<any> = [];
 
     function getProjectRootPath(project: Project): Path {
