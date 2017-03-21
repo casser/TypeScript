@@ -52,8 +52,6 @@ namespace ts {
     }
 
     function createProject(rootFile: string, serverHost: server.ServerHost): { project: server.Project, rootScriptInfo: server.ScriptInfo } {
-        
-
         const projectService = new server.ProjectService(serverHost, { isCancellationRequested: () => false }, /*useOneInferredProject*/ false, /*typingsInstaller*/ undefined);
         const rootScriptInfo = projectService.getOrCreateScriptInfo(rootFile, /* openedByClient */true, /*containingProject*/ undefined);
         const project = projectService.createInferredProjectWithRootFileIfNecessary(rootScriptInfo);

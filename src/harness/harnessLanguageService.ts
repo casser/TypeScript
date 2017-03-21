@@ -591,7 +591,7 @@ namespace Harness.LanguageService {
         }
     }
 
-    class SessionServerHost implements ts.server.ServerHost{
+    class SessionServerHost implements ts.server.ServerHost {
         args: string[] = [];
         newLine: string;
         useCaseSensitiveFileNames = false;

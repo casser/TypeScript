@@ -28,8 +28,6 @@ namespace ts.server {
         createHash: s => s
     };
 
-   
-
     class TestSession extends Session {
         getProjectService() {
             return this.projectService;

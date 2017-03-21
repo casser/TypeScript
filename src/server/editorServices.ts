@@ -276,7 +276,7 @@ namespace ts.server {
             private readonly eventHandler?: ProjectServiceEventHandler) {
 
             Debug.assert(!!host.createHash, "'ServerHost.createHash' is required for ProjectService");
-            this.logger = Logger.get('ProjectService');
+            this.logger = Logger.get("ProjectService");
             this.toCanonicalFileName = createGetCanonicalFileName(host.useCaseSensitiveFileNames);
             this.directoryWatchers = new DirectoryWatchers(this);
             this.throttledOperations = new ThrottledOperations(host);
@@ -793,7 +793,7 @@ namespace ts.server {
                     logger.info(`Project(${counter})`,{
                         kind    : ProjectKind[project.projectKind],
                         project : project.getProjectName(),
-                        files   : project.filesToString().trim().split('\n')
+                        files   : project.filesToString().trim().split("\n")
                     });
                     counter++;
                 }
