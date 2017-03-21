@@ -99,7 +99,7 @@ namespace ts.server {
             return this.file.filename;
         }
         public get enabled() {
-            return !!(this.file || this.console || this.options.level > 0);
+            return !!((this.file || this.console) && (this.options && this.options.level > 0));
         }
         constructor (options: LogEntry, parent?: Logger, console?: boolean, filename?: string) {
             if (parent) {
