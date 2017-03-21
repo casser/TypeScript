@@ -212,7 +212,7 @@ namespace ts.server {
                     request : JSON.stringify(request)
                 });
             }
-            
+
             this.throttledOperations.schedule(project.getProjectName(), /*ms*/ 250, () => {
                 if(this.logger.hasLevel(LogLevel.DEBUG)){
                     this.logger.debug(`Sending request`,{
@@ -236,7 +236,7 @@ namespace ts.server {
                 }
                 const body: protocol.TypesInstallerInitializationFailedEventBody = {
                     message: response.message
-                }
+                };
                 const eventName: protocol.TypesInstallerInitializationFailedEventName = "typesInstallerInitializationFailed";
                 this.eventSender.event(body, eventName);
                 return;
@@ -383,7 +383,7 @@ namespace ts.server {
             case 'WARN'         : return LogLevel.WARN;
             case 'normal'       :
             case 'INFO'         : return LogLevel.INFO;
-            case 'requestTime'  : 
+            case 'requestTime'  :
             case 'DEBUG'        : return LogLevel.DEBUG;
             case 'verbose'      :
             case 'TRACE'        : return LogLevel.TRACE;
@@ -396,7 +396,7 @@ namespace ts.server {
         const cmdLineLogFileName = findArgument("--logFile");
         const cmdLogVerbosity  = findArgument("--logVerbosity");
         const envLogOptions = parseLoggingEnvironmentString(process.env["TSS_LOG"]);
-        const logFileName = cmdLineLogFileName 
+        const logFileName = cmdLineLogFileName
             ? stripQuotes(cmdLineLogFileName) 
             : envLogOptions.logToFile
                 ? envLogOptions.file || (__dirname + "/.log" + process.pid.toString())
@@ -410,7 +410,7 @@ namespace ts.server {
             cwd : process.cwd(),
             env : process.env,
             log : envLogOptions
-        })
+        });
         return logger;
     }
     // This places log file in the directory containing editorServices.js
@@ -644,7 +644,7 @@ namespace ts.server {
     }
     catch (e) {
         cancellationToken = nullCancellationToken;
-    };
+    }
 
     let eventPort: number;
     {
