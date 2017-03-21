@@ -842,7 +842,13 @@ namespace ts.server {
 
         /** Used for configured projects which may have multiple open roots */
         openRefCount = 0;
-
+        private get logger(): Logger{
+            return Object.defineProperty(this, "logger", {
+                value : this.projectService.logger.child({
+                    name : "ConfiguredProject"
+                })
+            }).logger;
+        }
         constructor(private configFileName: NormalizedPath,
             projectService: ProjectService,
             documentRegistry: ts.DocumentRegistry,
@@ -864,17 +870,17 @@ namespace ts.server {
             const host = this.projectService.host;
             const options = this.getCompilerOptions();
             const log = (message: string) => {
-                this.projectService.logger.info(message);
+                this.logger.info(message);
             };
 
             if (!(options.plugins && options.plugins.length)) {
-                this.projectService.logger.info("No plugins exist");
+                this.logger.info("No plugins exist");
                 // No plugins
                 return;
             }
 
             if (!host.require) {
-                this.projectService.logger.info("Plugins were requested but not running in environment that supports 'require'. Nothing will be loaded");
+                this.logger.info("Plugins were requested but not running in environment that supports 'require'. Nothing will be loaded");
                 return;
             }
 
@@ -890,7 +896,7 @@ namespace ts.server {
         private enableProxy(pluginModuleFactory: PluginModuleFactory, configEntry: PluginImport) {
             try {
                 if (typeof pluginModuleFactory !== "function") {
-                    this.projectService.logger.info(`Skipped loading plugin ${configEntry.name} because it did expose a proper factory function`);
+                    this.logger.info(`Skipped loading plugin ${configEntry.name} because it did expose a proper factory function`);
                     return;
                 }
 
@@ -907,7 +913,7 @@ namespace ts.server {
                 this.plugins.push(pluginModule);
             }
             catch (e) {
-                this.projectService.logger.info(`Plugin activation failed: ${e}`);
+                this.logger.info(`Plugin activation failed: ${e}`);
             }
         }
 
@@ -935,7 +941,7 @@ namespace ts.server {
                         items.push(...plugin.getExternalFiles(this));
                     }
                     catch (e) {
-                        this.projectService.logger.info(`A plugin threw an exception in getExternalFiles: ${e}`);
+                        this.logger.info(`A plugin threw an exception in getExternalFiles: ${e}`);
                     }
                 }
             }
@@ -950,7 +956,10 @@ namespace ts.server {
             const roots = this.getEffectiveTypeRoots();
             const watchers: FileWatcher[] = [];
             for (const root of roots) {
-                this.projectService.logger.info(`Add type root watcher for: ${root}`);
+                this.logger.info(`Add type root watcher for`, {
+                    recursive: "N",
+                    dir: root
+                });
                 watchers.push(this.projectService.host.watchDirectory(root, path => callback(this, path), /*recursive*/ false));
             }
             this.typeRootsWatchers = watchers;
@@ -960,9 +969,11 @@ namespace ts.server {
             if (this.directoryWatcher) {
                 return;
             }
-
             const directoryToWatch = getDirectoryPath(this.getConfigFilePath());
-            this.projectService.logger.info(`Add recursive watcher for: ${directoryToWatch}`);
+            this.logger.info(`Add config watcher for`, {
+                recursive: "Y",
+                dir: directoryToWatch
+            });
             this.directoryWatcher = this.projectService.host.watchDirectory(directoryToWatch, path => callback(this, path), /*recursive*/ true);
         }
 
@@ -976,7 +987,10 @@ namespace ts.server {
             this.wildcardDirectories.forEach((flag, directory) => {
                 if (comparePaths(configDirectoryPath, directory, ".", !this.projectService.host.useCaseSensitiveFileNames) !== Comparison.EqualTo) {
                     const recursive = (flag & WatchDirectoryFlags.Recursive) !== 0;
-                    this.projectService.logger.info(`Add ${recursive ? "recursive " : ""}watcher for: ${directory}`);
+                    this.logger.info(`Add wildcard directory watcher`, {
+                        recursive   : recursive ? "Y" : "N",
+                        dir         : directory
+                    });
                     this.directoriesWatchedForWildcards.set(directory, this.projectService.host.watchDirectory(
                         directory,
                         path => callback(this, path),

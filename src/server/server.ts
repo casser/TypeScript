@@ -1,6 +1,7 @@
 /// <reference types="node" />
 /// <reference path="shared.ts" />
 /// <reference path="session.ts" />
+/// <reference path="logger.ts" />
 // used in fs.writeSync
 /* tslint:disable:no-null-keyword */
 
@@ -122,89 +123,6 @@ namespace ts.server {
         terminal: false,
     });
 
-    class Logger implements ts.server.Logger {
-        private fd = -1;
-        private seq = 0;
-        private inGroup = false;
-        private firstInGroup = true;
-
-        constructor(private readonly logFilename: string,
-            private readonly traceToConsole: boolean,
-            private readonly level: LogLevel) {
-            if (this.logFilename) {
-                try {
-                    this.fd = fs.openSync(this.logFilename, "w");
-                }
-                catch (_) {
-                    // swallow the error and keep logging disabled if file cannot be opened
-                }
-            }
-        }
-
-        static padStringRight(str: string, padding: string) {
-            return (str + padding).slice(0, padding.length);
-        }
-
-        close() {
-            if (this.fd >= 0) {
-                fs.close(this.fd);
-            }
-        }
-
-        getLogFileName() {
-            return this.logFilename;
-        }
-
-        perftrc(s: string) {
-            this.msg(s, Msg.Perf);
-        }
-
-        info(s: string) {
-            this.msg(s, Msg.Info);
-        }
-
-        startGroup() {
-            this.inGroup = true;
-            this.firstInGroup = true;
-        }
-
-        endGroup() {
-            this.inGroup = false;
-            this.seq++;
-            this.firstInGroup = true;
-        }
-
-        loggingEnabled() {
-            return !!this.logFilename || this.traceToConsole;
-        }
-
-        hasLevel(level: LogLevel) {
-            return this.loggingEnabled() && this.level >= level;
-        }
-
-        msg(s: string, type: Msg.Types = Msg.Err) {
-            if (this.fd >= 0 || this.traceToConsole) {
-                s = s + "\n";
-                const prefix = Logger.padStringRight(type + " " + this.seq.toString(), "          ");
-                if (this.firstInGroup) {
-                    s = prefix + s;
-                    this.firstInGroup = false;
-                }
-                if (!this.inGroup) {
-                    this.seq++;
-                    this.firstInGroup = true;
-                }
-                if (this.fd >= 0) {
-                    const buf = new Buffer(s);
-                    fs.writeSync(this.fd, buf, 0, buf.length, null);
-                }
-                if (this.traceToConsole) {
-                    console.warn(s);
-                }
-            }
-        }
-    }
-
     class NodeTypingsInstaller implements ITypingsInstaller {
         private installer: NodeChildProcess;
         private installerPidReported = false;
@@ -212,15 +130,16 @@ namespace ts.server {
         private projectService: ProjectService;
         private throttledOperations: ThrottledOperations;
         private eventSender: EventSender;
+        private logger: server.Logger;
 
         constructor(
             private readonly telemetryEnabled: boolean,
-            private readonly logger: server.Logger,
             host: ServerHost,
             eventPort: number,
             readonly globalTypingsCacheLocation: string,
             private newLine: string) {
             this.throttledOperations = new ThrottledOperations(host);
+            this.logger = Logger.get("NodeTypingsInstaller");
             if (eventPort) {
                 const s = net.connect({ port: eventPort }, () => {
                     this.socket = s;
@@ -249,15 +168,12 @@ namespace ts.server {
 
         attach(projectService: ProjectService) {
             this.projectService = projectService;
-            if (this.logger.hasLevel(LogLevel.requestTime)) {
-                this.logger.info("Binding...");
-            }
-
+            this.logger.info("Binding...");
             const args: string[] = [Arguments.GlobalCacheLocation, this.globalTypingsCacheLocation];
             if (this.telemetryEnabled) {
                 args.push(Arguments.EnableTelemetry);
             }
-            if (this.logger.loggingEnabled() && this.logger.getLogFileName()) {
+            if (this.logger.enabled && this.logger.getLogFileName()) {
                 args.push(Arguments.LogFile, combinePaths(getDirectoryPath(normalizeSlashes(this.logger.getLogFileName())), `ti-${process.pid}.log`));
             }
             const execArgv: string[] = [];
@@ -291,22 +207,27 @@ namespace ts.server {
 
         enqueueInstallTypingsRequest(project: Project, typeAcquisition: TypeAcquisition, unresolvedImports: SortedReadonlyArray<string>): void {
             const request = createInstallTypingsRequest(project, typeAcquisition, unresolvedImports);
-            if (this.logger.hasLevel(LogLevel.verbose)) {
-                if (this.logger.hasLevel(LogLevel.verbose)) {
-                    this.logger.info(`Scheduling throttled operation: ${JSON.stringify(request)}`);
-                }
+            if (this.logger.hasLevel(LogLevel.DEBUG)) {
+                this.logger.debug(`Scheduling throttled operation`, {
+                    request : JSON.stringify(request)
+                });
             }
+
             this.throttledOperations.schedule(project.getProjectName(), /*ms*/ 250, () => {
-                if (this.logger.hasLevel(LogLevel.verbose)) {
-                    this.logger.info(`Sending request: ${JSON.stringify(request)}`);
+                if (this.logger.hasLevel(LogLevel.DEBUG)) {
+                    this.logger.debug(`Sending request`, {
+                        request : JSON.stringify(request)
+                    });
                 }
                 this.installer.send(request);
             });
         }
 
         private handleMessage(response: SetTypings | InvalidateCachedTypings | BeginInstallTypes | EndInstallTypes | InitializationFailedResponse) {
-            if (this.logger.hasLevel(LogLevel.verbose)) {
-                this.logger.info(`Received response: ${JSON.stringify(response)}`);
+            if (this.logger.hasLevel(LogLevel.DEBUG)) {
+                this.logger.debug(`Received response`, {
+                    response : JSON.stringify(response)
+                });
             }
 
             if (response.kind === EventInitializationFailed) {
@@ -378,11 +299,10 @@ namespace ts.server {
             useSingleInferredProject: boolean,
             disableAutomaticTypingAcquisition: boolean,
             globalTypingsCacheLocation: string,
-            telemetryEnabled: boolean,
-            logger: server.Logger) {
+            telemetryEnabled: boolean) {
                 const typingsInstaller = disableAutomaticTypingAcquisition
                     ? undefined
-                    : new NodeTypingsInstaller(telemetryEnabled, logger, host, installerEventPort, globalTypingsCacheLocation, host.newLine);
+                    : new NodeTypingsInstaller(telemetryEnabled, host, installerEventPort, globalTypingsCacheLocation, host.newLine);
 
                 super(
                     host,
@@ -390,9 +310,8 @@ namespace ts.server {
                     useSingleInferredProject,
                     typingsInstaller || nullTypingsInstaller,
                     Buffer.byteLength,
-                    process.hrtime,
-                    logger,
-                    canUseEvents);
+                    canUseEvents
+                );
 
                 if (telemetryEnabled && typingsInstaller) {
                     typingsInstaller.setTelemetrySender(this);
@@ -440,9 +359,10 @@ namespace ts.server {
                         logEnv.file = stripQuotes(value);
                         break;
                     case "-level":
-                        const level = getLogLevel(value);
-                        logEnv.detailLevel = level !== undefined ? level : LogLevel.normal;
-                        break;
+                        if (value) {
+                            logEnv.detailLevel = getLogLevel(value);
+                        }
+                    break;
                     case "-traceToConsole":
                         logEnv.traceToConsole = value.toLowerCase() === "true";
                         break;
@@ -455,32 +375,43 @@ namespace ts.server {
         return logEnv;
     }
 
-    function getLogLevel(level: string) {
-        if (level) {
-            const l = level.toLowerCase();
-            for (const name in LogLevel) {
-                if (isNaN(+name) && l === name.toLowerCase()) {
-                    return <LogLevel><any>LogLevel[name];
-                }
-            }
+    function getLogLevel(level: string): LogLevel {
+        switch (level) {
+            case "terse"        :
+            case "FATAL"        : return LogLevel.FATAL;
+            case "ERROR"        : return LogLevel.ERROR;
+            case "WARN"         : return LogLevel.WARN;
+            case "normal"       :
+            case "INFO"         : return LogLevel.INFO;
+            case "requestTime"  :
+            case "DEBUG"        : return LogLevel.DEBUG;
+            case "verbose"      :
+            case "TRACE"        : return LogLevel.TRACE;
+            default             : return LogLevel.NONE;
         }
-        return undefined;
     }
 
     // TSS_LOG "{ level: "normal | verbose | terse", file?: string}"
     function createLogger() {
         const cmdLineLogFileName = findArgument("--logFile");
-        const cmdLineVerbosity = getLogLevel(findArgument("--logVerbosity"));
+        const cmdLogVerbosity  = findArgument("--logVerbosity");
         const envLogOptions = parseLoggingEnvironmentString(process.env["TSS_LOG"]);
-
         const logFileName = cmdLineLogFileName
             ? stripQuotes(cmdLineLogFileName)
             : envLogOptions.logToFile
                 ? envLogOptions.file || (__dirname + "/.log" + process.pid.toString())
                 : undefined;
 
-        const logVerbosity = cmdLineVerbosity || envLogOptions.detailLevel;
-        return new Logger(logFileName, envLogOptions.traceToConsole, logVerbosity);
+        const logVerbosity = cmdLogVerbosity ? getLogLevel(cmdLogVerbosity) : envLogOptions.detailLevel;
+        const logger = Logger.init(logVerbosity, envLogOptions.traceToConsole, logFileName);
+        logger.info(`Starting ${__filename}`, {
+            pid : process.pid,
+            arg : process.argv,
+            cwd : process.cwd(),
+            env : process.env,
+            log : envLogOptions
+        });
+        return logger;
     }
     // This places log file in the directory containing editorServices.js
     // TODO: check that this location is writable
@@ -641,23 +572,23 @@ namespace ts.server {
             const cacheKey = extractWatchDirectoryCacheKey(path, currentDrive);
             let status = cacheKey && statusCache.get(cacheKey);
             if (status === undefined) {
-                if (logger.hasLevel(LogLevel.verbose)) {
+                if (logger.hasLevel(LogLevel.DEBUG)) {
                     logger.info(`${cacheKey} for path ${path} not found in cache...`);
                 }
                 try {
                     const args = [combinePaths(__dirname, "watchGuard.js"), path];
-                    if (logger.hasLevel(LogLevel.verbose)) {
+                    if (logger.hasLevel(LogLevel.DEBUG)) {
                         logger.info(`Starting ${process.execPath} with args ${JSON.stringify(args)}`);
                     }
                     childProcess.execFileSync(process.execPath, args, { stdio: "ignore", env: { "ELECTRON_RUN_AS_NODE": "1" } });
                     status = true;
-                    if (logger.hasLevel(LogLevel.verbose)) {
+                    if (logger.hasLevel(LogLevel.DEBUG)) {
                         logger.info(`WatchGuard for path ${path} returned: OK`);
                     }
                 }
                 catch (e) {
                     status = false;
-                    if (logger.hasLevel(LogLevel.verbose)) {
+                    if (logger.hasLevel(LogLevel.DEBUG)) {
                         logger.info(`WatchGuard for path ${path} returned: ${e.message}`);
                     }
                 }
@@ -665,7 +596,7 @@ namespace ts.server {
                     statusCache.set(cacheKey, status);
                 }
             }
-            else if (logger.hasLevel(LogLevel.verbose)) {
+            else if (logger.hasLevel(LogLevel.DEBUG)) {
                 logger.info(`watchDirectory for ${path} uses cached drive information.`);
             }
             if (status) {
@@ -713,7 +644,7 @@ namespace ts.server {
     }
     catch (e) {
         cancellationToken = nullCancellationToken;
-    };
+    }
 
     let eventPort: number;
     {
@@ -741,8 +672,7 @@ namespace ts.server {
         useSingleInferredProject,
         disableAutomaticTypingAcquisition,
         getGlobalTypingsCacheLocation(),
-        telemetryEnabled,
-        logger);
+        telemetryEnabled);
     process.on("uncaughtException", function (err: Error) {
         ioSession.logError(err, "unknown");
     });

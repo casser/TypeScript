@@ -22,18 +22,6 @@ namespace ts.projectSystem {
         readonly callback: TI.RequestCompletedAction;
     }
 
-    export const nullLogger: server.Logger = {
-        close: () => void 0,
-        hasLevel: () => void 0,
-        loggingEnabled: () => false,
-        perftrc: () => void 0,
-        info: () => void 0,
-        startGroup: () => void 0,
-        endGroup: () => void 0,
-        msg: () => void 0,
-        getLogFileName: (): string => undefined
-    };
-
     export const { content: libFileContent } = Harness.getDefaultLibraryFile(Harness.IO);
     export const libFile: FileOrFolder = {
         path: "/a/lib/lib.d.ts",
@@ -180,7 +168,7 @@ namespace ts.projectSystem {
         if (typingsInstaller === undefined) {
             typingsInstaller = new TestTypingsInstaller("/a/data/", /*throttleLimit*/5, host);
         }
-        return new TestSession(host, cancellationToken || server.nullCancellationToken, /*useSingleInferredProject*/ false, typingsInstaller, Utils.byteLength, process.hrtime, nullLogger, /*canUseEvents*/ projectServiceEventHandler !== undefined, projectServiceEventHandler);
+        return new TestSession(host, cancellationToken || server.nullCancellationToken, /*useSingleInferredProject*/ false, typingsInstaller, Utils.byteLength, /*canUseEvents*/ projectServiceEventHandler !== undefined, projectServiceEventHandler);
     }
 
     export interface CreateProjectServiceParameters {
@@ -193,9 +181,9 @@ namespace ts.projectSystem {
 
 
     export class TestProjectService extends server.ProjectService {
-        constructor(host: server.ServerHost, logger: server.Logger, cancellationToken: HostCancellationToken, useSingleInferredProject: boolean,
+        constructor(host: server.ServerHost, cancellationToken: HostCancellationToken, useSingleInferredProject: boolean,
             typingsInstaller: server.ITypingsInstaller, eventHandler: server.ProjectServiceEventHandler) {
-            super(host, logger, cancellationToken, useSingleInferredProject, typingsInstaller, eventHandler);
+            super(host, cancellationToken, useSingleInferredProject, typingsInstaller, eventHandler);
         }
 
         checkNumberOfProjects(count: { inferredProjects?: number, configuredProjects?: number, externalProjects?: number }) {
@@ -204,9 +192,8 @@ namespace ts.projectSystem {
     }
     export function createProjectService(host: server.ServerHost, parameters: CreateProjectServiceParameters = {}) {
         const cancellationToken = parameters.cancellationToken || server.nullCancellationToken;
-        const logger = parameters.logger || nullLogger;
         const useSingleInferredProject = parameters.useSingleInferredProject !== undefined ? parameters.useSingleInferredProject : false;
-        return new TestProjectService(host, logger, cancellationToken, useSingleInferredProject, parameters.typingsInstaller, parameters.eventHandler);
+        return new TestProjectService(host, cancellationToken, useSingleInferredProject, parameters.typingsInstaller, parameters.eventHandler);
     }
 
     export interface FileOrFolder {

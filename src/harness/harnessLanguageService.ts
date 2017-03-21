@@ -591,7 +591,7 @@ namespace Harness.LanguageService {
         }
     }
 
-    class SessionServerHost implements ts.server.ServerHost, ts.server.Logger {
+    class SessionServerHost implements ts.server.ServerHost {
         args: string[] = [];
         newLine: string;
         useCaseSensitiveFileNames = false;
@@ -823,7 +823,6 @@ namespace Harness.LanguageService {
                 /*useOneInferredProject*/ false,
                 /*typingsInstaller*/ undefined,
                 Utils.byteLength,
-                process.hrtime, serverHost,
                 /*canUseEvents*/ true);
 
             // Fake the connection between the client and the server
