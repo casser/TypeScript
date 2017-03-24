@@ -207,28 +207,22 @@ namespace ts.server {
 
         enqueueInstallTypingsRequest(project: Project, typeAcquisition: TypeAcquisition, unresolvedImports: SortedReadonlyArray<string>): void {
             const request = createInstallTypingsRequest(project, typeAcquisition, unresolvedImports);
-            if (this.logger.hasLevel(LogLevel.DEBUG)) {
-                this.logger.debug(`Scheduling throttled operation`, {
-                    request : JSON.stringify(request)
-                });
-            }
+            this.logger.debug(`Scheduling throttled operation`, {
+                request$trace : ()=>JSON.stringify(request)
+            });
 
             this.throttledOperations.schedule(project.getProjectName(), /*ms*/ 250, () => {
-                if (this.logger.hasLevel(LogLevel.DEBUG)) {
-                    this.logger.debug(`Sending request`, {
-                        request : JSON.stringify(request)
-                    });
-                }
+                this.logger.debug(`Sending request`, {
+                    request$trace : ()=>JSON.stringify(request)
+                });
                 this.installer.send(request);
             });
         }
 
         private handleMessage(response: SetTypings | InvalidateCachedTypings | BeginInstallTypes | EndInstallTypes | InitializationFailedResponse) {
-            if (this.logger.hasLevel(LogLevel.DEBUG)) {
-                this.logger.debug(`Received response`, {
-                    response : JSON.stringify(response)
-                });
-            }
+            this.logger.debug(`Received response`, {
+                response : ()=>JSON.stringify(response)
+            });
 
             if (response.kind === EventInitializationFailed) {
                 if (!this.eventSender) {
@@ -577,8 +571,12 @@ namespace ts.server {
                 }
                 try {
                     const args = [combinePaths(__dirname, "watchGuard.js"), path];
+                    logger.info(`Starting with args`,{
+                        execPath : process.execPath,
+                        args$trace : JSON.stringify(args)
+                    });
                     if (logger.hasLevel(LogLevel.DEBUG)) {
-                        logger.info(`Starting ${process.execPath} with args ${JSON.stringify(args)}`);
+                        
                     }
                     childProcess.execFileSync(process.execPath, args, { stdio: "ignore", env: { "ELECTRON_RUN_AS_NODE": "1" } });
                     status = true;

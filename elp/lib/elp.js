@@ -564,13 +564,15 @@ var ts;
     (function (CheckFlags) {
         CheckFlags[CheckFlags["Instantiated"] = 1] = "Instantiated";
         CheckFlags[CheckFlags["SyntheticProperty"] = 2] = "SyntheticProperty";
-        CheckFlags[CheckFlags["Readonly"] = 4] = "Readonly";
-        CheckFlags[CheckFlags["Partial"] = 8] = "Partial";
-        CheckFlags[CheckFlags["HasNonUniformType"] = 16] = "HasNonUniformType";
-        CheckFlags[CheckFlags["ContainsPublic"] = 32] = "ContainsPublic";
-        CheckFlags[CheckFlags["ContainsProtected"] = 64] = "ContainsProtected";
-        CheckFlags[CheckFlags["ContainsPrivate"] = 128] = "ContainsPrivate";
-        CheckFlags[CheckFlags["ContainsStatic"] = 256] = "ContainsStatic";
+        CheckFlags[CheckFlags["SyntheticMethod"] = 4] = "SyntheticMethod";
+        CheckFlags[CheckFlags["Readonly"] = 8] = "Readonly";
+        CheckFlags[CheckFlags["Partial"] = 16] = "Partial";
+        CheckFlags[CheckFlags["HasNonUniformType"] = 32] = "HasNonUniformType";
+        CheckFlags[CheckFlags["ContainsPublic"] = 64] = "ContainsPublic";
+        CheckFlags[CheckFlags["ContainsProtected"] = 128] = "ContainsProtected";
+        CheckFlags[CheckFlags["ContainsPrivate"] = 256] = "ContainsPrivate";
+        CheckFlags[CheckFlags["ContainsStatic"] = 512] = "ContainsStatic";
+        CheckFlags[CheckFlags["Synthetic"] = 6] = "Synthetic";
     })(CheckFlags = ts.CheckFlags || (ts.CheckFlags = {}));
     var NodeCheckFlags;
     (function (NodeCheckFlags) {
@@ -3951,7 +3953,6 @@ var ts;
         File_specification_cannot_end_in_a_recursive_directory_wildcard_Asterisk_Asterisk_Colon_0: { code: 5010, category: ts.DiagnosticCategory.Error, key: "File_specification_cannot_end_in_a_recursive_directory_wildcard_Asterisk_Asterisk_Colon_0_5010", message: "File specification cannot end in a recursive directory wildcard ('**'): '{0}'." },
         File_specification_cannot_contain_multiple_recursive_directory_wildcards_Asterisk_Asterisk_Colon_0: { code: 5011, category: ts.DiagnosticCategory.Error, key: "File_specification_cannot_contain_multiple_recursive_directory_wildcards_Asterisk_Asterisk_Colon_0_5011", message: "File specification cannot contain multiple recursive directory wildcards ('**'): '{0}'." },
         Cannot_read_file_0_Colon_1: { code: 5012, category: ts.DiagnosticCategory.Error, key: "Cannot_read_file_0_Colon_1_5012", message: "Cannot read file '{0}': {1}." },
-        Unsupported_file_encoding: { code: 5013, category: ts.DiagnosticCategory.Error, key: "Unsupported_file_encoding_5013", message: "Unsupported file encoding." },
         Failed_to_parse_file_0_Colon_1: { code: 5014, category: ts.DiagnosticCategory.Error, key: "Failed_to_parse_file_0_Colon_1_5014", message: "Failed to parse file '{0}': {1}." },
         Unknown_compiler_option_0: { code: 5023, category: ts.DiagnosticCategory.Error, key: "Unknown_compiler_option_0_5023", message: "Unknown compiler option '{0}'." },
         Compiler_option_0_requires_a_value_of_type_1: { code: 5024, category: ts.DiagnosticCategory.Error, key: "Compiler_option_0_requires_a_value_of_type_1_5024", message: "Compiler option '{0}' requires a value of type {1}." },
@@ -10175,7 +10176,14 @@ var ts;
             while (pos < end) {
                 pos++;
                 char = text.charCodeAt(pos);
-                if ((char === 123) || (char === 60)) {
+                if (char === 123) {
+                    break;
+                }
+                if (char === 60) {
+                    if (isConflictMarkerTrivia(text, pos)) {
+                        pos = scanConflictMarkerTrivia(text, pos, error);
+                        return token = 7;
+                    }
                     break;
                 }
             }
@@ -15982,6 +15990,9 @@ var ts;
                 }
                 else if (token() === 1) {
                     parseErrorAtPosition(openingTagName.pos, openingTagName.end - openingTagName.pos, ts.Diagnostics.JSX_element_0_has_no_corresponding_closing_tag, ts.getTextOfNodeFromSourceText(sourceText, openingTagName));
+                    break;
+                }
+                else if (token() === 7) {
                     break;
                 }
                 result.push(parseJsxChild());
@@ -25281,7 +25292,7 @@ var ts;
                     var modifiersProp = getPropertyOfType(modifiersType, propName);
                     var isOptional = templateOptional || !!(modifiersProp && modifiersProp.flags & 67108864);
                     var prop = createSymbol(4 | (isOptional ? 67108864 : 0), propName);
-                    prop.checkFlags = templateReadonly || modifiersProp && isReadonlySymbol(modifiersProp) ? 4 : 0;
+                    prop.checkFlags = templateReadonly || modifiersProp && isReadonlySymbol(modifiersProp) ? 8 : 0;
                     prop.type = propType;
                     if (propertySymbol) {
                         prop.mappedTypeOrigin = propertySymbol;
@@ -25508,7 +25519,8 @@ var ts;
             var isUnion = containingType.flags & 65536;
             var excludeModifiers = isUnion ? 24 : 0;
             var commonFlags = isUnion ? 0 : 67108864;
-            var checkFlags = 2;
+            var syntheticFlag = 4;
+            var checkFlags = 0;
             for (var _i = 0, types_3 = types; _i < types_3.length; _i++) {
                 var current = types_3[_i];
                 var type = getApparentType(current);
@@ -25523,21 +25535,24 @@ var ts;
                         else if (!ts.contains(props, prop)) {
                             props.push(prop);
                         }
-                        checkFlags |= (isReadonlySymbol(prop) ? 4 : 0) |
-                            (!(modifiers & 24) ? 32 : 0) |
-                            (modifiers & 16 ? 64 : 0) |
-                            (modifiers & 8 ? 128 : 0) |
-                            (modifiers & 32 ? 256 : 0);
+                        checkFlags |= (isReadonlySymbol(prop) ? 8 : 0) |
+                            (!(modifiers & 24) ? 64 : 0) |
+                            (modifiers & 16 ? 128 : 0) |
+                            (modifiers & 8 ? 256 : 0) |
+                            (modifiers & 32 ? 512 : 0);
+                        if (!isMethodLike(prop)) {
+                            syntheticFlag = 2;
+                        }
                     }
                     else if (isUnion) {
-                        checkFlags |= 8;
+                        checkFlags |= 16;
                     }
                 }
             }
             if (!props) {
                 return undefined;
             }
-            if (props.length === 1 && !(checkFlags & 8)) {
+            if (props.length === 1 && !(checkFlags & 16)) {
                 return props[0];
             }
             var propTypes = [];
@@ -25553,12 +25568,12 @@ var ts;
                     commonType = type;
                 }
                 else if (type !== commonType) {
-                    checkFlags |= 16;
+                    checkFlags |= 32;
                 }
                 propTypes.push(type);
             }
             var result = createSymbol(4 | commonFlags, name);
-            result.checkFlags = checkFlags;
+            result.checkFlags = syntheticFlag | checkFlags;
             result.containingType = containingType;
             result.declarations = declarations;
             result.type = isUnion ? getUnionType(propTypes) : getIntersectionType(propTypes);
@@ -25577,7 +25592,7 @@ var ts;
         }
         function getPropertyOfUnionOrIntersectionType(type, name) {
             var property = getUnionOrIntersectionProperty(type, name);
-            return property && !(getCheckFlags(property) & 8) ? property : undefined;
+            return property && !(getCheckFlags(property) & 16) ? property : undefined;
         }
         function getPropertyOfType(type, name) {
             type = getApparentType(type);
@@ -26861,7 +26876,7 @@ var ts;
                         var declarations = ts.concatenate(leftProp.declarations, rightProp.declarations);
                         var flags = 4 | (leftProp.flags & 67108864);
                         var result = createSymbol(flags, leftProp.name);
-                        result.checkFlags = isReadonlySymbol(leftProp) || isReadonlySymbol(rightProp) ? 4 : 0;
+                        result.checkFlags = isReadonlySymbol(leftProp) || isReadonlySymbol(rightProp) ? 8 : 0;
                         result.type = getUnionType([getTypeOfSymbol(leftProp), getTypeWithFacts(rightType, 131072)]);
                         result.leftSpread = leftProp;
                         result.rightSpread = rightProp;
@@ -28175,7 +28190,7 @@ var ts;
                             var sourcePropFlags = getDeclarationModifierFlagsFromSymbol(sourceProp);
                             var targetPropFlags = getDeclarationModifierFlagsFromSymbol(targetProp);
                             if (sourcePropFlags & 8 || targetPropFlags & 8) {
-                                if (getCheckFlags(sourceProp) & 128) {
+                                if (getCheckFlags(sourceProp) & 256) {
                                     if (reportErrors) {
                                         reportError(ts.Diagnostics.Property_0_has_conflicting_declarations_and_is_inaccessible_in_type_1, symbolToString(sourceProp), typeToString(source));
                                     }
@@ -28399,7 +28414,7 @@ var ts;
             }
         }
         function forEachProperty(prop, callback) {
-            if (getCheckFlags(prop) & 2) {
+            if (getCheckFlags(prop) & 6) {
                 for (var _i = 0, _a = prop.containingType.types; _i < _a.length; _i++) {
                     var t = _a[_i];
                     var p = getPropertyOfType(t, prop.name);
@@ -28911,7 +28926,7 @@ var ts;
                     return undefined;
                 }
                 var inferredProp = createSymbol(4 | prop.flags & optionalMask, prop.name);
-                inferredProp.checkFlags = readonlyMask && isReadonlySymbol(prop) ? 4 : 0;
+                inferredProp.checkFlags = readonlyMask && isReadonlySymbol(prop) ? 8 : 0;
                 inferredProp.declarations = prop.declarations;
                 inferredProp.type = inferredPropType;
                 members.set(prop.name, inferredProp);
@@ -29315,7 +29330,7 @@ var ts;
                 var prop = getUnionOrIntersectionProperty(type, name);
                 if (prop && getCheckFlags(prop) & 2) {
                     if (prop.isDiscriminantProperty === undefined) {
-                        prop.isDiscriminantProperty = prop.checkFlags & 16 && isLiteralType(getTypeOfSymbol(prop));
+                        prop.isDiscriminantProperty = prop.checkFlags & 32 && isLiteralType(getTypeOfSymbol(prop));
                     }
                     return prop.isDiscriminantProperty;
                 }
@@ -31808,12 +31823,12 @@ var ts;
                 var flags = ts.getCombinedModifierFlags(s.valueDeclaration);
                 return s.parent && s.parent.flags & 32 ? flags : flags & ~28;
             }
-            if (getCheckFlags(s) & 2) {
+            if (getCheckFlags(s) & 6) {
                 var checkFlags = s.checkFlags;
-                var accessModifier = checkFlags & 128 ? 8 :
-                    checkFlags & 32 ? 4 :
+                var accessModifier = checkFlags & 256 ? 8 :
+                    checkFlags & 64 ? 4 :
                         16;
-                var staticModifier = checkFlags & 256 ? 32 : 0;
+                var staticModifier = checkFlags & 512 ? 32 : 0;
                 return accessModifier | staticModifier;
             }
             if (s.flags & 16777216) {
@@ -31824,19 +31839,25 @@ var ts;
         function getDeclarationNodeFlagsFromSymbol(s) {
             return s.valueDeclaration ? ts.getCombinedNodeFlags(s.valueDeclaration) : 0;
         }
+        function isMethodLike(symbol) {
+            return !!(symbol.flags & 8192 || getCheckFlags(symbol) & 4);
+        }
         function checkPropertyAccessibility(node, left, type, prop) {
             var flags = getDeclarationModifierFlagsFromSymbol(prop);
             var errorNode = node.kind === 178 || node.kind === 225 ?
                 node.name :
                 node.right;
-            if (getCheckFlags(prop) & 128) {
+            if (getCheckFlags(prop) & 256) {
                 error(errorNode, ts.Diagnostics.Property_0_has_conflicting_declarations_and_is_inaccessible_in_type_1, symbolToString(prop), typeToString(type));
                 return false;
             }
             if (left.kind === 96) {
                 if (languageVersion < 2) {
-                    var propKind = getDeclarationKindFromSymbol(prop);
-                    if (propKind !== 150 && propKind !== 149) {
+                    var hasNonMethodDeclaration = forEachProperty(prop, function (p) {
+                        var propKind = getDeclarationKindFromSymbol(p);
+                        return propKind !== 150 && propKind !== 149;
+                    });
+                    if (hasNonMethodDeclaration) {
                         error(errorNode, ts.Diagnostics.Only_public_and_protected_methods_of_the_base_class_are_accessible_via_the_super_keyword);
                         return false;
                     }
@@ -33359,7 +33380,7 @@ var ts;
             return true;
         }
         function isReadonlySymbol(symbol) {
-            return !!(getCheckFlags(symbol) & 4 ||
+            return !!(getCheckFlags(symbol) & 8 ||
                 symbol.flags & 4 && getDeclarationModifierFlagsFromSymbol(symbol) & 64 ||
                 symbol.flags & 3 && getDeclarationNodeFlagsFromSymbol(symbol) & 2 ||
                 symbol.flags & 98304 && !(symbol.flags & 65536) ||
@@ -36537,32 +36558,28 @@ var ts;
                     }
                     else {
                         var derivedDeclarationFlags = getDeclarationModifierFlagsFromSymbol(derived);
-                        if ((baseDeclarationFlags & 8) || (derivedDeclarationFlags & 8)) {
+                        if (baseDeclarationFlags & 8 || derivedDeclarationFlags & 8) {
                             continue;
                         }
                         if ((baseDeclarationFlags & 32) !== (derivedDeclarationFlags & 32)) {
                             continue;
                         }
-                        if ((base.flags & derived.flags & 8192) || ((base.flags & 98308) && (derived.flags & 98308))) {
+                        if (isMethodLike(base) && isMethodLike(derived) || base.flags & 98308 && derived.flags & 98308) {
                             continue;
                         }
                         var errorMessage = void 0;
-                        if (base.flags & 8192) {
+                        if (isMethodLike(base)) {
                             if (derived.flags & 98304) {
                                 errorMessage = ts.Diagnostics.Class_0_defines_instance_member_function_1_but_extended_class_2_defines_it_as_instance_member_accessor;
                             }
                             else {
-                                ts.Debug.assert((derived.flags & 4) !== 0);
                                 errorMessage = ts.Diagnostics.Class_0_defines_instance_member_function_1_but_extended_class_2_defines_it_as_instance_member_property;
                             }
                         }
                         else if (base.flags & 4) {
-                            ts.Debug.assert((derived.flags & 8192) !== 0);
                             errorMessage = ts.Diagnostics.Class_0_defines_instance_member_property_1_but_extended_class_2_defines_it_as_instance_member_function;
                         }
                         else {
-                            ts.Debug.assert((base.flags & 98304) !== 0);
-                            ts.Debug.assert((derived.flags & 8192) !== 0);
                             errorMessage = ts.Diagnostics.Class_0_defines_instance_member_accessor_1_but_extended_class_2_defines_it_as_instance_member_function;
                         }
                         error(derived.valueDeclaration.name, errorMessage, typeToString(baseType), symbolToString(base), typeToString(type));
@@ -37876,7 +37893,7 @@ var ts;
             return getNamedMembers(propsByName);
         }
         function getRootSymbols(symbol) {
-            if (getCheckFlags(symbol) & 2) {
+            if (getCheckFlags(symbol) & 6) {
                 var symbols_3 = [];
                 var name_2 = symbol.name;
                 ts.forEach(getSymbolLinks(symbol).containingType.types, function (t) {
@@ -47102,7 +47119,8 @@ var ts;
         function transformCommonJSModule(node) {
             startLexicalEnvironment();
             var statements = [];
-            var statementOffset = ts.addPrologueDirectives(statements, node.statements, !compilerOptions.noImplicitUseStrict, sourceElementVisitor);
+            var ensureUseStrict = compilerOptions.alwaysStrict || (!compilerOptions.noImplicitUseStrict && ts.isExternalModule(currentSourceFile));
+            var statementOffset = ts.addPrologueDirectives(statements, node.statements, ensureUseStrict, sourceElementVisitor);
             if (shouldEmitUnderscoreUnderscoreESModule()) {
                 ts.append(statements, createUnderscoreUnderscoreESModule());
             }
@@ -47811,7 +47829,8 @@ var ts;
         function createSystemModuleBody(node, dependencyGroups) {
             var statements = [];
             startLexicalEnvironment();
-            var statementOffset = ts.addPrologueDirectives(statements, node.statements, !compilerOptions.noImplicitUseStrict, sourceElementVisitor);
+            var ensureUseStrict = compilerOptions.alwaysStrict || (!compilerOptions.noImplicitUseStrict && ts.isExternalModule(currentSourceFile));
+            var statementOffset = ts.addPrologueDirectives(statements, node.statements, ensureUseStrict, sourceElementVisitor);
             statements.push(ts.createVariableStatement(undefined, ts.createVariableDeclarationList([
                 ts.createVariableDeclaration("__moduleName", undefined, ts.createLogicalAnd(contextObject, ts.createPropertyAccess(contextObject, "id")))
             ])));
@@ -60561,7 +60580,7 @@ var ts;
             if (isObjectBindingPatternElementWithoutPropertyName(symbol)) {
                 return undefined;
             }
-            if (symbol.parent || (symbol.flags & 134217728 && symbol.checkFlags & 2)) {
+            if (symbol.parent || (symbol.flags & 134217728 && symbol.checkFlags & 6)) {
                 return undefined;
             }
             var scope;
@@ -63995,7 +64014,7 @@ var ts;
             if (flags & 16384)
                 return ts.ScriptElementKind.constructorImplementationElement;
             if (flags & 4) {
-                if (flags & 134217728 && symbol.checkFlags & 2) {
+                if (flags & 134217728 && symbol.checkFlags & 6) {
                     var unionPropertyKind = ts.forEach(typeChecker.getRootSymbols(symbol), function (rootSymbol) {
                         var rootSymbolFlags = rootSymbol.getFlags();
                         if (rootSymbolFlags & (98308 | 3)) {
@@ -68402,7 +68421,6 @@ var ts;
                 }
                 function createChangeTracker() {
                     return ts.textChanges.ChangeTracker.fromCodeFixContext(context);
-                    ;
                 }
                 function createCodeAction(description, diagnosticArgs, changes, kind, moduleSpecifier) {
                     return {
@@ -68692,6 +68710,9 @@ var ts;
             }
             return child.kind < 142 ? child : child.getLastToken(sourceFile);
         };
+        NodeObject.prototype.forEachChild = function (cbNode, cbNodeArray) {
+            return ts.forEachChild(this, cbNode, cbNodeArray);
+        };
         return NodeObject;
     }());
     var TokenOrIdentifierObject = (function () {
@@ -68741,6 +68762,9 @@ var ts;
             return undefined;
         };
         TokenOrIdentifierObject.prototype.getLastToken = function () {
+            return undefined;
+        };
+        TokenOrIdentifierObject.prototype.forEachChild = function () {
             return undefined;
         };
         return TokenOrIdentifierObject;
@@ -72425,9 +72449,9 @@ var ts;
             }
             Object.defineProperty(ConfiguredProject.prototype, "logger", {
                 get: function () {
-                    return Object.defineProperty(this, 'logger', {
+                    return Object.defineProperty(this, "logger", {
                         value: this.projectService.logger.child({
-                            name: 'ConfiguredProject'
+                            name: "ConfiguredProject"
                         })
                     }).logger;
                 },
@@ -72520,7 +72544,7 @@ var ts;
                 for (var _i = 0, roots_1 = roots; _i < roots_1.length; _i++) {
                     var root = roots_1[_i];
                     this.logger.info("Add type root watcher for", {
-                        recursive: 'N',
+                        recursive: "N",
                         dir: root
                     });
                     watchers.push(this.projectService.host.watchDirectory(root, function (path) { return callback(_this, path); }, false));
@@ -72534,7 +72558,7 @@ var ts;
                 }
                 var directoryToWatch = ts.getDirectoryPath(this.getConfigFilePath());
                 this.logger.info("Add config watcher for", {
-                    recursive: 'Y',
+                    recursive: "Y",
                     dir: directoryToWatch
                 });
                 this.directoryWatcher = this.projectService.host.watchDirectory(directoryToWatch, function (path) { return callback(_this, path); }, true);
@@ -72550,7 +72574,7 @@ var ts;
                     if (ts.comparePaths(configDirectoryPath, directory, ".", !_this.projectService.host.useCaseSensitiveFileNames) !== 0) {
                         var recursive = (flag & 1) !== 0;
                         _this.logger.info("Add wildcard directory watcher", {
-                            recursive: recursive ? 'Y' : 'N',
+                            recursive: recursive ? "Y" : "N",
                             dir: directory
                         });
                         _this.directoriesWatchedForWildcards.set(directory, _this.projectService.host.watchDirectory(directory, function (path) { return callback(_this, path); }, recursive));
@@ -72638,6 +72662,230 @@ var ts;
             return ExternalProject;
         }(Project));
         server.ExternalProject = ExternalProject;
+    })(server = ts.server || (ts.server = {}));
+})(ts || (ts = {}));
+var ts;
+(function (ts) {
+    var server;
+    (function (server) {
+        var LogLevel;
+        (function (LogLevel) {
+            LogLevel[LogLevel["FATAL"] = 60] = "FATAL";
+            LogLevel[LogLevel["ERROR"] = 50] = "ERROR";
+            LogLevel[LogLevel["WARN"] = 40] = "WARN";
+            LogLevel[LogLevel["INFO"] = 30] = "INFO";
+            LogLevel[LogLevel["DEBUG"] = 20] = "DEBUG";
+            LogLevel[LogLevel["TRACE"] = 10] = "TRACE";
+            LogLevel[LogLevel["NONE"] = 0] = "NONE";
+        })(LogLevel = server.LogLevel || (server.LogLevel = {}));
+        var LoggerFileTarget = (function () {
+            function LoggerFileTarget(filename) {
+                try {
+                    this.filename = filename;
+                    this.descriptor = this.fs.openSync(filename, "w");
+                }
+                catch (e) {
+                    this.descriptor = -1;
+                }
+            }
+            Object.defineProperty(LoggerFileTarget.prototype, "fs", {
+                get: function () {
+                    var fs;
+                    try {
+                        fs = require("fs");
+                    }
+                    catch (e) {
+                        fs = void 0;
+                    }
+                    return Object.defineProperty(this, "fs", {
+                        value: fs
+                    }).fs;
+                },
+                enumerable: true,
+                configurable: true
+            });
+            LoggerFileTarget.prototype.write = function (text) {
+                if (this.fs && this.descriptor >= 0) {
+                    this.fs.writeSync(this.descriptor, text + "\n");
+                }
+                else {
+                    console.info(this.filename);
+                }
+            };
+            LoggerFileTarget.prototype.close = function () {
+                this.fs.close(this.descriptor);
+            };
+            return LoggerFileTarget;
+        }());
+        server.LoggerFileTarget = LoggerFileTarget;
+        var LoggerConsoleTarget = (function () {
+            function LoggerConsoleTarget() {
+            }
+            LoggerConsoleTarget.prototype.write = function (text) {
+                console.warn(text);
+            };
+            return LoggerConsoleTarget;
+        }());
+        server.LoggerConsoleTarget = LoggerConsoleTarget;
+        var Logger = (function () {
+            function Logger(options, parent, console, filename) {
+                if (parent) {
+                    this.file = parent.file;
+                    this.console = parent.console;
+                    this.parent = parent;
+                    this.options = Object.assign({}, parent.options, options);
+                }
+                else if (options.level > 0) {
+                    this.options = Object.assign({}, options);
+                    if (console) {
+                        this.console = new LoggerConsoleTarget();
+                    }
+                    if (filename) {
+                        this.file = new LoggerFileTarget(filename);
+                    }
+                }
+                this.children = [];
+                Object.freeze(this.options);
+                Object.freeze(this);
+            }
+            Logger.init = function (level, console, filename) {
+                var hostname = "host";
+                var pid = 0;
+                try {
+                    hostname = require("os").hostname();
+                }
+                catch (e) { }
+                try {
+                    pid = process.pid;
+                }
+                catch (e) { }
+                if (!this.default) {
+                    Object.defineProperty(this, "default", {
+                        value: new Logger({
+                            v: 0,
+                            pid: pid,
+                            hostname: hostname,
+                            name: "default",
+                            level: level
+                        }, void 0, console, filename)
+                    });
+                }
+                return this.default;
+            };
+            Logger.get = function (name) {
+                if (!this.default) {
+                    this.init(LogLevel.NONE);
+                }
+                return this.default.child({ name: name });
+            };
+            Object.defineProperty(Logger.prototype, "filename", {
+                get: function () {
+                    return this.file.filename;
+                },
+                enumerable: true,
+                configurable: true
+            });
+            Object.defineProperty(Logger.prototype, "enabled", {
+                get: function () {
+                    return !!((this.file || this.console) && (this.options && this.options.level > 0));
+                },
+                enumerable: true,
+                configurable: true
+            });
+            Logger.prototype.child = function (options) {
+                var child = new Logger(options, this);
+                this.children.push(child);
+                return child;
+            };
+            Logger.prototype.fatal = function (msg, data) {
+                return this.log({ level: LogLevel.FATAL, msg: msg }, data);
+            };
+            Logger.prototype.error = function (msg, data) {
+                return this.log({ level: LogLevel.ERROR, msg: msg }, data);
+            };
+            Logger.prototype.warn = function (msg, data) {
+                return this.log({ level: LogLevel.WARN, msg: msg }, data);
+            };
+            Logger.prototype.info = function (msg, data) {
+                return this.log({ level: LogLevel.INFO, msg: msg }, data);
+            };
+            Logger.prototype.debug = function (msg, data) {
+                return this.log({ level: LogLevel.DEBUG, msg: msg }, data);
+            };
+            Logger.prototype.trace = function (msg, data) {
+                return this.log({ level: LogLevel.TRACE, msg: msg }, data);
+            };
+            Logger.prototype.log = function (entry, extra) {
+                var self = this.options;
+                function formatMiliseconds(time) {
+                    var seconds = time[0];
+                    var nanoseconds = time[1];
+                    return ((1e9 * seconds) + nanoseconds) / 1000000.0;
+                }
+                function formatInstruction(name, data) {
+                    var value = extra[name];
+                    var pair = name.split("$");
+                    var key = pair[0];
+                    var inst = pair[1].toUpperCase();
+                    if (inst == "TIME" && Array.isArray(value)) {
+                        data[key] = formatMiliseconds(process.hrtime(value));
+                    }
+                    else {
+                        var level = LogLevel[inst];
+                        if (level && level >= self.level) {
+                            data[key] = typeof (value) == "function" ? value() : value;
+                        }
+                    }
+                }
+                function formatData() {
+                    var data = {
+                        v: self.v,
+                        hostname: self.hostname,
+                        pid: self.pid,
+                        name: entry.name || self.name,
+                        level: entry.level || self.level,
+                        msg: entry.msg || "Message",
+                    };
+                    for (var i in extra) {
+                        if (i.indexOf("$") > 0) {
+                            formatInstruction(i, data);
+                        }
+                        else {
+                            data[i] = extra[i];
+                        }
+                    }
+                    data.time = new Date();
+                    return data;
+                }
+                if (this.enabled) {
+                    if (entry.level >= this.options.level) {
+                        this.write(JSON.stringify(formatData()));
+                        return process.hrtime();
+                    }
+                }
+            };
+            Logger.prototype.close = function () {
+                if (this.file) {
+                    this.file.close();
+                }
+            };
+            Logger.prototype.hasLevel = function (level) {
+                return level > 0;
+            };
+            Logger.prototype.write = function (text) {
+                if (this.file) {
+                    this.file.write(text);
+                }
+                if (this.console) {
+                    this.console.write(text);
+                }
+            };
+            Logger.prototype.getLogFileName = function () {
+                return this.filename;
+            };
+            return Logger;
+        }());
+        server.Logger = Logger;
     })(server = ts.server || (ts.server = {}));
 })(ts || (ts = {}));
 var ts;
@@ -72791,7 +73039,7 @@ var ts;
                 this.configuredProjects = [];
                 this.openFiles = [];
                 ts.Debug.assert(!!host.createHash, "'ServerHost.createHash' is required for ProjectService");
-                this.logger = server.Logger.get('ProjectService');
+                this.logger = server.Logger.get("ProjectService");
                 this.toCanonicalFileName = ts.createGetCanonicalFileName(host.useCaseSensitiveFileNames);
                 this.directoryWatchers = new DirectoryWatchers(this);
                 this.throttledOperations = new server.ThrottledOperations(host);
@@ -72986,19 +73234,25 @@ var ts;
             };
             ProjectService.prototype.onConfigChangedForConfiguredProject = function (project) {
                 var configFileName = project.getConfigFilePath();
-                this.logger.info("Config file changed: " + configFileName);
+                this.logger.info("Config file changed", {
+                    file: configFileName
+                });
                 var configFileErrors = this.updateConfiguredProject(project);
                 this.reportConfigFileDiagnostics(configFileName, configFileErrors, configFileName);
                 this.refreshInferredProjects();
             };
             ProjectService.prototype.onConfigFileAddedForInferredProject = function (fileName) {
                 if (ts.getBaseFileName(fileName) != "tsconfig.json") {
-                    this.logger.info(fileName + " is not tsconfig.json");
+                    this.logger.info("Not a tsconfig.json file", {
+                        file: fileName
+                    });
                     return;
                 }
                 var configFileErrors = this.convertConfigFileContentToProjectOptions(fileName).configFileErrors;
                 this.reportConfigFileDiagnostics(fileName, configFileErrors, fileName);
-                this.logger.info("Detected newly added tsconfig file: " + fileName);
+                this.logger.info("Detected newly added tsconfig file", {
+                    file: fileName
+                });
                 this.reloadProjects();
             };
             ProjectService.prototype.getCanonicalFileName = function (fileName) {
@@ -73176,7 +73430,7 @@ var ts;
                         logger.info("Project(" + counter + ")", {
                             kind: server.ProjectKind[project.projectKind],
                             project: project.getProjectName(),
-                            files: project.filesToString().trim().split('\n')
+                            files: project.filesToString().trim().split("\n")
                         });
                         counter++;
                     }
@@ -73767,13 +74021,7 @@ var ts;
             resetRequest: function () { return void 0; }
         };
         function shouldSkipSematicCheck(project) {
-            if (project.getCompilerOptions().skipLibCheck !== undefined) {
-                return false;
-            }
-            if ((project.projectKind === server.ProjectKind.Inferred || project.projectKind === server.ProjectKind.External) && project.isJsOnlyProject()) {
-                return true;
-            }
-            return false;
+            return (project.projectKind === server.ProjectKind.Inferred || project.projectKind === server.ProjectKind.External) && project.isJsOnlyProject();
         }
         function compareNumber(a, b) {
             return a - b;
@@ -73892,22 +74140,22 @@ var ts;
         })(CommandNames = server.CommandNames || (server.CommandNames = {}));
         function formatMessage(msg, logger, byteLength, newLine) {
             var json = JSON.stringify(msg);
-            if (msg.type == 'event') {
+            if (msg.type == "event") {
                 var evn = msg;
-                logger.info('Event', {
+                logger.info("Event", {
                     seq: evn.seq,
                     cmd: evn.event,
-                    '<--$debug': json,
+                    "<--$debug": json,
                     arg$trace: evn.body
                 });
             }
-            if (msg.type == 'response') {
+            if (msg.type == "response") {
                 var res = msg;
-                logger.info('Response', {
+                logger.info("Response", {
                     seq: res.request_seq + ":" + res.seq,
                     success: res.success,
                     cmd: res.command,
-                    '<--$debug': json,
+                    "<--$debug": json,
                     arg$trace: res.body,
                 });
             }
@@ -74244,7 +74492,7 @@ var ts;
                         return _this.requiredResponse(_this.getSupportedCodeFixes());
                     },
                     _a));
-                this.logger = server.Logger.get('Session');
+                this.logger = server.Logger.get("Session");
                 this.eventHander = canUseEvents
                     ? eventHandler || (function (event) { return _this.defaultEventHandler(event); })
                     : undefined;
@@ -74258,7 +74506,7 @@ var ts;
                 };
                 this.errorCheck = new MultistepOperation(multistepOperationHost);
                 this.projectService = new server.ProjectService(host, cancellationToken, useSingleInferredProject, typingsInstaller, this.eventHander);
-                this.gcTimer = new server.GcTimer(host, 7000, this.logger.child({ name: 'Session.gc' }));
+                this.gcTimer = new server.GcTimer(host, 7000, this.logger.child({ name: "Session.gc" }));
                 var _a;
             }
             Session.prototype.sendRequestCompletedEvent = function (requestId) {
@@ -75330,7 +75578,7 @@ var ts;
                     var start = this.logger.info("Request", {
                         seq: request.seq,
                         cmd: request.command,
-                        '-->$debug': message,
+                        "-->$debug": message,
                         arg$trace: request.arguments,
                     });
                     var _a = this.executeCommand(request), response = _a.response, responseRequired = _a.responseRequired;
@@ -76212,226 +76460,6 @@ var ts;
 (function (ts) {
     var server;
     (function (server) {
-        var LogLevel;
-        (function (LogLevel) {
-            LogLevel[LogLevel["FATAL"] = 60] = "FATAL";
-            LogLevel[LogLevel["ERROR"] = 50] = "ERROR";
-            LogLevel[LogLevel["WARN"] = 40] = "WARN";
-            LogLevel[LogLevel["INFO"] = 30] = "INFO";
-            LogLevel[LogLevel["DEBUG"] = 20] = "DEBUG";
-            LogLevel[LogLevel["TRACE"] = 10] = "TRACE";
-            LogLevel[LogLevel["NONE"] = 0] = "NONE";
-        })(LogLevel = server.LogLevel || (server.LogLevel = {}));
-        var LoggerFileTarget = (function () {
-            function LoggerFileTarget(filename) {
-                try {
-                    this.filename = filename;
-                    this.descriptor = this.fs.openSync(filename, "w");
-                }
-                catch (e) {
-                    this.descriptor = -1;
-                }
-            }
-            Object.defineProperty(LoggerFileTarget.prototype, "fs", {
-                get: function () {
-                    var fs;
-                    try {
-                        fs = require('fs');
-                    }
-                    catch (e) {
-                        fs = null;
-                    }
-                    return Object.defineProperty(this, 'fs', {
-                        value: fs
-                    }).fs;
-                },
-                enumerable: true,
-                configurable: true
-            });
-            LoggerFileTarget.prototype.write = function (text) {
-                if (this.fs && this.descriptor >= 0) {
-                    this.fs.writeSync(this.descriptor, text + '\n');
-                }
-                else {
-                    console.info(this.filename);
-                }
-            };
-            LoggerFileTarget.prototype.close = function () {
-                this.fs.close(this.descriptor);
-            };
-            return LoggerFileTarget;
-        }());
-        server.LoggerFileTarget = LoggerFileTarget;
-        var LoggerConsoleTarget = (function () {
-            function LoggerConsoleTarget() {
-            }
-            LoggerConsoleTarget.prototype.write = function (text) {
-                console.warn(text);
-            };
-            return LoggerConsoleTarget;
-        }());
-        server.LoggerConsoleTarget = LoggerConsoleTarget;
-        var Logger = (function () {
-            function Logger(options, parent, console, filename) {
-                if (parent) {
-                    this.file = parent.file;
-                    this.console = parent.console;
-                    this.parent = parent;
-                    this.options = Object.assign({}, parent.options, options);
-                }
-                else if (options.level > 0) {
-                    this.options = Object.assign({}, options);
-                    if (console) {
-                        this.console = new LoggerConsoleTarget();
-                    }
-                    if (filename) {
-                        this.file = new LoggerFileTarget(filename);
-                    }
-                }
-                this.children = [];
-                Object.freeze(this.options);
-                Object.freeze(this);
-            }
-            Logger.init = function (level, console, filename) {
-                var hostname = "host";
-                var pid = 0;
-                try {
-                    hostname = require('os').hostname();
-                }
-                catch (e) { }
-                try {
-                    pid = process.pid;
-                }
-                catch (e) { }
-                if (!this.default) {
-                    Object.defineProperty(this, 'default', {
-                        value: new Logger({
-                            v: 0,
-                            pid: pid,
-                            hostname: hostname,
-                            name: 'default',
-                            level: level
-                        }, null, console, filename)
-                    });
-                }
-                return this.default;
-            };
-            Logger.get = function (name) {
-                return this.default.child({ name: name });
-            };
-            Object.defineProperty(Logger.prototype, "filename", {
-                get: function () {
-                    return this.file.filename;
-                },
-                enumerable: true,
-                configurable: true
-            });
-            Object.defineProperty(Logger.prototype, "enabled", {
-                get: function () {
-                    return !!(this.file || this.console || this.options.level > 0);
-                },
-                enumerable: true,
-                configurable: true
-            });
-            Logger.prototype.child = function (options) {
-                var child = new Logger(options, this);
-                this.children.push(child);
-                return child;
-            };
-            Logger.prototype.fatal = function (msg, data) {
-                return this.log({ level: LogLevel.FATAL, msg: msg }, data);
-            };
-            Logger.prototype.error = function (msg, data) {
-                return this.log({ level: LogLevel.ERROR, msg: msg }, data);
-            };
-            Logger.prototype.warn = function (msg, data) {
-                return this.log({ level: LogLevel.WARN, msg: msg }, data);
-            };
-            Logger.prototype.info = function (msg, data) {
-                return this.log({ level: LogLevel.INFO, msg: msg }, data);
-            };
-            Logger.prototype.debug = function (msg, data) {
-                return this.log({ level: LogLevel.DEBUG, msg: msg }, data);
-            };
-            Logger.prototype.trace = function (msg, data) {
-                return this.log({ level: LogLevel.TRACE, msg: msg }, data);
-            };
-            Logger.prototype.log = function (entry, extra) {
-                var self = this.options;
-                function formatMiliseconds(time) {
-                    var seconds = time[0];
-                    var nanoseconds = time[1];
-                    return ((1e9 * seconds) + nanoseconds) / 1000000.0;
-                }
-                function formatInstruction(name, data) {
-                    var value = extra[name];
-                    var _a = name.split('$'), key = _a[0], inst = _a[1];
-                    inst = inst.toUpperCase();
-                    if (inst == 'TIME' && Array.isArray(value)) {
-                        data[key] = formatMiliseconds(process.hrtime(value));
-                    }
-                    else {
-                        var level = LogLevel[inst];
-                        if (level && level >= self.level) {
-                            data[key] = typeof (value) == 'function' ? value() : value;
-                        }
-                    }
-                }
-                function formatData() {
-                    var data = {
-                        v: self.v,
-                        hostname: self.hostname,
-                        pid: self.pid,
-                        name: entry.name || self.name,
-                        level: entry.level || self.level,
-                        msg: entry.msg || "Message",
-                    };
-                    for (var i in extra) {
-                        if (i.indexOf('$') > 0) {
-                            formatInstruction(i, data);
-                        }
-                        else {
-                            data[i] = extra[i];
-                        }
-                    }
-                    data.time = new Date();
-                    return data;
-                }
-                if (this.enabled) {
-                    if (entry.level >= this.options.level) {
-                        this.write(JSON.stringify(formatData()));
-                        return process.hrtime();
-                    }
-                }
-            };
-            Logger.prototype.close = function () {
-                if (this.file) {
-                    this.file.close();
-                }
-            };
-            Logger.prototype.hasLevel = function (level) {
-                return level > 0;
-            };
-            Logger.prototype.write = function (text) {
-                if (this.file) {
-                    this.file.write(text);
-                }
-                if (this.console) {
-                    this.console.write(text);
-                }
-            };
-            Logger.prototype.getLogFileName = function () {
-                return this.filename;
-            };
-            return Logger;
-        }());
-        server.Logger = Logger;
-    })(server = ts.server || (ts.server = {}));
-})(ts || (ts = {}));
-var ts;
-(function (ts) {
-    var server;
-    (function (server) {
         var net = require("net");
         var childProcess = require("child_process");
         var os = require("os");
@@ -76486,7 +76514,7 @@ var ts;
                 this.newLine = newLine;
                 this.installerPidReported = false;
                 this.throttledOperations = new server.ThrottledOperations(host);
-                this.logger = server.Logger.get('NodeTypingsInstaller');
+                this.logger = server.Logger.get("NodeTypingsInstaller");
                 if (eventPort) {
                     var s_1 = net.connect({ port: eventPort }, function () {
                         _this.socket = s_1;
@@ -76547,26 +76575,20 @@ var ts;
             NodeTypingsInstaller.prototype.enqueueInstallTypingsRequest = function (project, typeAcquisition, unresolvedImports) {
                 var _this = this;
                 var request = server.createInstallTypingsRequest(project, typeAcquisition, unresolvedImports);
-                if (this.logger.hasLevel(server.LogLevel.DEBUG)) {
-                    this.logger.debug("Scheduling throttled operation", {
-                        request: JSON.stringify(request)
-                    });
-                }
+                this.logger.debug("Scheduling throttled operation", {
+                    request$trace: function () { return JSON.stringify(request); }
+                });
                 this.throttledOperations.schedule(project.getProjectName(), 250, function () {
-                    if (_this.logger.hasLevel(server.LogLevel.DEBUG)) {
-                        _this.logger.debug("Sending request", {
-                            request: JSON.stringify(request)
-                        });
-                    }
+                    _this.logger.debug("Sending request", {
+                        request$trace: function () { return JSON.stringify(request); }
+                    });
                     _this.installer.send(request);
                 });
             };
             NodeTypingsInstaller.prototype.handleMessage = function (response) {
-                if (this.logger.hasLevel(server.LogLevel.DEBUG)) {
-                    this.logger.debug("Received response", {
-                        response: JSON.stringify(response)
-                    });
-                }
+                this.logger.debug("Received response", {
+                    response: function () { return JSON.stringify(response); }
+                });
                 if (response.kind === server.EventInitializationFailed) {
                     if (!this.eventSender) {
                         return;
@@ -76685,16 +76707,16 @@ var ts;
         }
         function getLogLevel(level) {
             switch (level) {
-                case 'terse':
-                case 'FATAL': return server.LogLevel.FATAL;
-                case 'ERROR': return server.LogLevel.ERROR;
-                case 'WARN': return server.LogLevel.WARN;
-                case 'normal':
-                case 'INFO': return server.LogLevel.INFO;
-                case 'requestTime':
-                case 'DEBUG': return server.LogLevel.DEBUG;
-                case 'verbose':
-                case 'TRACE': return server.LogLevel.TRACE;
+                case "terse":
+                case "FATAL": return server.LogLevel.FATAL;
+                case "ERROR": return server.LogLevel.ERROR;
+                case "WARN": return server.LogLevel.WARN;
+                case "normal":
+                case "INFO": return server.LogLevel.INFO;
+                case "requestTime":
+                case "DEBUG": return server.LogLevel.DEBUG;
+                case "verbose":
+                case "TRACE": return server.LogLevel.TRACE;
                 default: return server.LogLevel.NONE;
             }
         }
@@ -76839,8 +76861,11 @@ var ts;
                     }
                     try {
                         var args = [ts.combinePaths(__dirname, "watchGuard.js"), path];
+                        logger.info("Starting with args", {
+                            execPath: process.execPath,
+                            args$trace: JSON.stringify(args)
+                        });
                         if (logger.hasLevel(server.LogLevel.DEBUG)) {
-                            logger.info("Starting " + process.execPath + " with args " + JSON.stringify(args));
                         }
                         childProcess.execFileSync(process.execPath, args, { stdio: "ignore", env: { "ELECTRON_RUN_AS_NODE": "1" } });
                         status = true;
@@ -76900,7 +76925,6 @@ var ts;
         catch (e) {
             cancellationToken = server.nullCancellationToken;
         }
-        ;
         var eventPort;
         {
             var str = server.findArgument("--eventPort");
