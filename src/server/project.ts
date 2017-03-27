@@ -462,6 +462,23 @@ namespace ts.server {
             }
             let unresolvedImports: string[];
             if (file.resolvedModules) {
+                file.getNamedDeclarations().forEach((v,k)=>{
+                    for(let d of v){
+                        if(d.kind==SyntaxKind.ModuleDeclaration && (d as ModuleDeclaration).name.kind==SyntaxKind.StringLiteral){
+                            if(file.resolvedModules.has(k)){
+                                let resolvedModule = file.resolvedModules.get(k);
+                                if(!resolvedModule && !isExternalModuleNameRelative(k)){
+                                    file.resolvedModules.set(k,{
+                                        extension:Extension.Dts,
+                                        isExternalLibraryImport:true,
+                                        resolvedFileName:file.fileName
+                                    })
+                                }
+                            }
+                            return;
+                        }
+                    }
+                });
                 file.resolvedModules.forEach((resolvedModule, name) => {
                     // pick unresolved non-relative names
                     if (!resolvedModule && !isExternalModuleNameRelative(name)) {
