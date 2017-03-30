@@ -18,6 +18,7 @@ declare namespace ts.server {
         gc?(): void;
         trace?(s: string): void;
         require?(initialPath: string, moduleName: string): RequireResult;
+        byteLength(buf: string, encoding?: string):number;
     }
 
     export interface SortedReadonlyArray<T> extends ReadonlyArray<T> {

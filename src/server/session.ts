@@ -328,7 +328,7 @@ namespace ts.server {
         private currentRequestId: number;
         private errorCheck: MultistepOperation;
 
-        private eventHander: ProjectServiceEventHandler;
+        protected eventHander: ProjectServiceEventHandler;
         protected logger: Logger;
 
         constructor(
@@ -336,7 +336,6 @@ namespace ts.server {
             private readonly cancellationToken: ServerCancellationToken,
             useSingleInferredProject: boolean,
             protected readonly typingsInstaller: ITypingsInstaller,
-            private byteLength: (buf: string, encoding?: string) => number,
             protected readonly canUseEvents: boolean,
             eventHandler?: ProjectServiceEventHandler) {
 
@@ -409,7 +408,7 @@ namespace ts.server {
                 }
                 return;
             }
-            this.host.write(formatMessage(msg, this.logger, this.byteLength, this.host.newLine));
+            this.host.write(formatMessage(msg, this.logger, this.host.byteLength, this.host.newLine));
         }
 
         public configFileDiagnosticEvent(triggerFile: string, configFile: string, diagnostics: ts.Diagnostic[]) {

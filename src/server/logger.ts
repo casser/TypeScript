@@ -63,6 +63,21 @@ namespace ts.server {
         }
     }
     export class Logger  {
+        static toLogLevel(str:string="none"):LogLevel{
+            switch (str.toUpperCase()) {
+                case "TERSE"        :
+                case "FATAL"        : return LogLevel.FATAL;
+                case "ERROR"        : return LogLevel.ERROR;
+                case "WARN"         : return LogLevel.WARN;
+                case "NORMAL"       :
+                case "INFO"         : return LogLevel.INFO;
+                case "REQUESTTIME"  :
+                case "DEBUG"        : return LogLevel.DEBUG;
+                case "VERBOSE"      :
+                case "TRACE"        : return LogLevel.TRACE;
+                default             : return LogLevel.NONE;
+            }
+        }
         static default: Logger;
         static init(level: LogLevel, console?: boolean, filename?: string): Logger {
             let hostname = "host";
@@ -85,8 +100,42 @@ namespace ts.server {
             return this.default;
         }
         static get(name: string): Logger {
+            function parseEnvironmentString() {
+                let logEnvStr:string = process.env.TSS_LOG;
+                const logEnv = {
+                    level   : LogLevel.NONE, 
+                    file    : <string>void 0,
+                    console : <boolean>void 0 
+                };
+                if (!logEnvStr) {
+                    return logEnv;
+                }
+                const args = logEnvStr.split(" ");
+                const len = args.length - 1;
+                for (let i = 0; i < len; i += 2) {
+                    const option = args[i];
+                    const value = args[i + 1];
+                    if (option && value) {
+                        switch (option) {
+                            case "-file":
+                                logEnv.file = stripQuotes(value);
+                                break;
+                            case "-level":
+                                if (value) {
+                                    logEnv.level = Logger.toLogLevel(value);
+                                }
+                            break;
+                            case "-traceToConsole":
+                                logEnv.console = value.toLowerCase() === "true";
+                                break;
+                        }
+                    }
+                }
+                return logEnv;
+            }
             if (!this.default) {
-                this.init(LogLevel.NONE);
+                let {level,console,file} = parseEnvironmentString();
+                this.init(level,console,file);
             }
             return this.default.child({ name });
         }

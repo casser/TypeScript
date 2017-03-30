@@ -1,9 +1,45 @@
 {
-    "$schema": "http://json.schemastore.org/tsconfig",
-    "extends": "../../src/compiler/tsconfig.json",
+    "extends": "../../src/tsconfig-base",
     "compilerOptions": {
-        "outFile": "../lib/typescript/tsc.js",
-        "declaration": false,
-        "sourceMap": false
-    }
+        "removeComments": true,
+        "outFile": "../../built/local/tsc.js",
+        "declaration": true,
+        "types":["node"]
+    },
+    "files": [
+        "../../src/compiler/core.ts",
+        "../../src/compiler/performance.ts",
+        "../../src/compiler/sys.ts",
+        "../../src/compiler/types.ts",
+        "../../src/compiler/scanner.ts",
+        "../../src/compiler/parser.ts",
+        "../../src/compiler/utilities.ts",
+        "../../src/compiler/binder.ts",
+        "../../src/compiler/checker.ts",
+        "../../src/compiler/factory.ts",
+        "../../src/compiler/visitor.ts",
+        "../../src/compiler/transformers/ts.ts",
+        "../../src/compiler/transformers/jsx.ts",
+        "../../src/compiler/transformers/esnext.ts",
+        "../../src/compiler/transformers/es2017.ts",
+        "../../src/compiler/transformers/es2016.ts",
+        "../../src/compiler/transformers/es2015.ts",
+        "../../src/compiler/transformers/es5.ts",
+        "../../src/compiler/transformers/generators.ts",
+        "../../src/compiler/transformers/es5.ts",
+        "../../src/compiler/transformers/destructuring.ts",
+        "../../src/compiler/transformers/module/module.ts",
+        "../../src/compiler/transformers/module/system.ts",
+        "../../src/compiler/transformers/module/es2015.ts",
+        "../../src/compiler/transformer.ts",
+        "../../src/compiler/comments.ts",
+        "../../src/compiler/sourcemap.ts",
+        "../../src/compiler/declarationEmitter.ts",
+        "../../src/compiler/emitter.ts",
+        "../../src/compiler/program.ts",
+        "../../src/compiler/commandLineParser.ts",
+        "../src/override-tsc.ts",
+        "../../src/compiler/tsc.ts",
+        "../../src/compiler/diagnosticInformationMap.generated.ts"
+    ]
 }

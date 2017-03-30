@@ -111,17 +111,15 @@ namespace ts.server {
         extraFileExtensions?: JsFileExtensionInfo[];
     }
 
-    interface ConfigFileConversionResult {
+    export interface ConfigFileConversionResult {
         success: boolean;
         configFileErrors?: Diagnostic[];
-
         projectOptions?: ProjectOptions;
     }
 
-    interface OpenConfigFileResult {
+    export interface OpenConfigFileResult {
         success: boolean;
         errors?: Diagnostic[];
-
         project?: ConfiguredProject;
     }
 
@@ -130,7 +128,7 @@ namespace ts.server {
         configFileErrors?: Diagnostic[];
     }
 
-    interface FilePropertyReader<T> {
+    export interface FilePropertyReader<T> {
         getFileName(f: T): string;
         getScriptKind(f: T): ScriptKind;
         hasMixedContent(f: T, extraFileExtensions: JsFileExtensionInfo[]): boolean;
@@ -273,7 +271,7 @@ namespace ts.server {
             public readonly cancellationToken: HostCancellationToken,
             public readonly useSingleInferredProject: boolean,
             readonly typingsInstaller: ITypingsInstaller = nullTypingsInstaller,
-            private readonly eventHandler?: ProjectServiceEventHandler) {
+            protected readonly eventHandler?: ProjectServiceEventHandler) {
 
             Debug.assert(!!host.createHash, "'ServerHost.createHash' is required for ProjectService");
             this.logger = Logger.get("ProjectService");
@@ -371,7 +369,7 @@ namespace ts.server {
             return scriptInfo && scriptInfo.getDefaultProject();
         }
 
-        private ensureInferredProjectsUpToDate() {
+        protected ensureInferredProjectsUpToDate() {
             if (this.changedFiles) {
                 let projectsToUpdate: Project[];
                 if (this.changedFiles.length === 1) {
@@ -389,7 +387,7 @@ namespace ts.server {
             }
         }
 
-        private findContainingExternalProject(fileName: NormalizedPath): ExternalProject {
+        protected findContainingExternalProject(fileName: NormalizedPath): ExternalProject {
             for (const proj of this.externalProjects) {
                 if (proj.containsFile(fileName)) {
                     return proj;
@@ -409,7 +407,7 @@ namespace ts.server {
             return formatCodeSettings || this.hostConfiguration.formatCodeOptions;
         }
 
-        private updateProjectGraphs(projects: Project[]) {
+        protected updateProjectGraphs(projects: Project[]) {
             let shouldRefreshInferredProjects = false;
             for (const p of projects) {
                 if (!p.updateGraph()) {
@@ -421,7 +419,7 @@ namespace ts.server {
             }
         }
 
-        private onSourceFileChanged(fileName: NormalizedPath) {
+        protected onSourceFileChanged(fileName: NormalizedPath) {
             const info = this.getScriptInfoForNormalizedPath(fileName);
             if (!info) {
                 this.logger.info(`Error: got watch notification for unknown file: ${fileName}`);
@@ -442,7 +440,7 @@ namespace ts.server {
             }
         }
 
-        private handleDeletedFile(info: ScriptInfo) {
+        protected handleDeletedFile(info: ScriptInfo) {
             this.logger.info(`${info.fileName} deleted`);
 
             info.stopWatcher();
@@ -477,7 +475,7 @@ namespace ts.server {
             this.printProjects();
         }
 
-        private onTypeRootFileChanged(project: ConfiguredProject, fileName: string) {
+        protected onTypeRootFileChanged(project: ConfiguredProject, fileName: string) {
             this.logger.info(`Type root file ${fileName} changed`);
             this.throttledOperations.schedule(project.getConfigFilePath() + " * type root", /*delay*/ 250, () => {
                 project.updateTypes();
@@ -491,7 +489,7 @@ namespace ts.server {
          * @param project the project that associates with this directory watcher
          * @param fileName the absolute file name that changed in watched directory
          */
-        private onSourceFileInDirectoryChangedForConfiguredProject(project: ConfiguredProject, fileName: string) {
+        protected onSourceFileInDirectoryChangedForConfiguredProject(project: ConfiguredProject, fileName: string) {
             // If a change was made inside "folder/file", node will trigger the callback twice:
             // one with the fileName being "folder/file", and the other one with "folder".
             // We don't respond to the second one.
@@ -506,7 +504,7 @@ namespace ts.server {
                 () => this.handleChangeInSourceFileForConfiguredProject(project, fileName));
         }
 
-        private handleChangeInSourceFileForConfiguredProject(project: ConfiguredProject, triggerFile: string) {
+        protected handleChangeInSourceFileForConfiguredProject(project: ConfiguredProject, triggerFile: string) {
             const { projectOptions, configFileErrors } = this.convertConfigFileContentToProjectOptions(project.getConfigFilePath());
             this.reportConfigFileDiagnostics(project.getProjectName(), configFileErrors, triggerFile);
 
@@ -528,7 +526,7 @@ namespace ts.server {
             }
         }
 
-        private onConfigChangedForConfiguredProject(project: ConfiguredProject) {
+        protected onConfigChangedForConfiguredProject(project: ConfiguredProject) {
             const configFileName = project.getConfigFilePath();
             this.logger.info(`Config file changed`, {
                 file: configFileName
@@ -541,7 +539,7 @@ namespace ts.server {
         /**
          * This is the callback function when a watched directory has an added tsconfig file.
          */
-        private onConfigFileAddedForInferredProject(fileName: string) {
+        protected onConfigFileAddedForInferredProject(fileName: string) {
             // TODO: check directory separators
             if (getBaseFileName(fileName) != "tsconfig.json") {
                 this.logger.info(`Not a tsconfig.json file`, {
@@ -559,12 +557,12 @@ namespace ts.server {
             this.reloadProjects();
         }
 
-        private getCanonicalFileName(fileName: string) {
+        protected getCanonicalFileName(fileName: string) {
             const name = this.host.useCaseSensitiveFileNames ? fileName : fileName.toLowerCase();
             return normalizePath(name);
         }
 
-        private removeProject(project: Project) {
+        protected removeProject(project: Project) {
             this.logger.info(`remove project: ${project.getRootFiles().toString()}`);
 
             project.close();
@@ -582,7 +580,7 @@ namespace ts.server {
             }
         }
 
-        private assignScriptInfoToInferredProjectIfNecessary(info: ScriptInfo, addToListOfOpenFiles: boolean): void {
+        protected assignScriptInfoToInferredProjectIfNecessary(info: ScriptInfo, addToListOfOpenFiles: boolean): void {
             const externalProject = this.findContainingExternalProject(info.fileName);
             if (externalProject) {
                 // file is already included in some external project - do nothing
@@ -645,7 +643,7 @@ namespace ts.server {
           * Remove this file from the set of open, non-configured files.
           * @param info The file that has been closed or newly configured
           */
-        private closeOpenFile(info: ScriptInfo): void {
+        protected closeOpenFile(info: ScriptInfo): void {
             // Closing file should trigger re-reading the file content from disk. This is
             // because the user may chose to discard the buffer content before saving
             // to the disk, and the server's version of the file can be out of sync.
@@ -709,7 +707,7 @@ namespace ts.server {
          * we first detect if there is already a configured project created for it: if so, we re-read
          * the tsconfig file content and update the project; otherwise we create a new one.
          */
-        private openOrUpdateConfiguredProjectForFile(fileName: NormalizedPath): OpenConfiguredProjectResult {
+        protected openOrUpdateConfiguredProjectForFile(fileName: NormalizedPath): OpenConfiguredProjectResult {
             const searchPath = getDirectoryPath(fileName);
             this.logger.info(`Search config file in`, {
                 dir  : searchPath,
@@ -755,7 +753,7 @@ namespace ts.server {
         // current directory (the directory in which tsc was invoked).
         // The server must start searching from the directory containing
         // the newly opened file.
-        private findConfigFile(searchPath: NormalizedPath): NormalizedPath {
+        protected findConfigFile(searchPath: NormalizedPath): NormalizedPath {
             while (true) {
                 const tsconfigFileName = asNormalizedPath(combinePaths(searchPath, "tsconfig.json"));
                 if (this.host.fileExists(tsconfigFileName)) {
@@ -776,7 +774,7 @@ namespace ts.server {
             return undefined;
         }
 
-        private printProjects() {
+        protected printProjects() {
             if (!this.logger.hasLevel(LogLevel.DEBUG)) {
                 return;
             }
@@ -801,7 +799,7 @@ namespace ts.server {
             }
         }
 
-        private findConfiguredProjectByProjectName(configFileName: NormalizedPath) {
+        protected findConfiguredProjectByProjectName(configFileName: NormalizedPath) {
             // make sure that casing of config file name is consistent
             configFileName = asNormalizedPath(this.toCanonicalFileName(configFileName));
             for (const proj of this.configuredProjects) {
@@ -811,11 +809,11 @@ namespace ts.server {
             }
         }
 
-        private findExternalProjectByProjectName(projectFileName: string) {
+        protected findExternalProjectByProjectName(projectFileName: string) {
             return findProjectByName(projectFileName, this.externalProjects);
         }
 
-        private convertConfigFileContentToProjectOptions(configFilename: string): ConfigFileConversionResult {
+        protected convertConfigFileContentToProjectOptions(configFilename: string): ConfigFileConversionResult {
             configFilename = normalizePath(configFilename);
 
             const configFileContent = this.host.readFile(configFilename);
@@ -862,7 +860,7 @@ namespace ts.server {
             return { success: true, projectOptions, configFileErrors: errors };
         }
 
-        private exceededTotalSizeLimitForNonTsFiles<T>(options: CompilerOptions, fileNames: T[], propertyReader: FilePropertyReader<T>) {
+        protected exceededTotalSizeLimitForNonTsFiles<T>(options: CompilerOptions, fileNames: T[], propertyReader: FilePropertyReader<T>) {
             if (options && options.disableSizeLimit || !this.host.getFileSize) {
                 return false;
             }
@@ -880,7 +878,7 @@ namespace ts.server {
             return false;
         }
 
-        private createAndAddExternalProject(projectFileName: string, files: protocol.ExternalFile[], options: protocol.ExternalProjectCompilerOptions, typeAcquisition: TypeAcquisition) {
+        protected createAndAddExternalProject(projectFileName: string, files: protocol.ExternalFile[], options: protocol.ExternalProjectCompilerOptions, typeAcquisition: TypeAcquisition) {
             const compilerOptions = convertCompilerOptions(options);
             const project = new ExternalProject(
                 projectFileName,
@@ -895,7 +893,7 @@ namespace ts.server {
             return project;
         }
 
-        private reportConfigFileDiagnostics(configFileName: string, diagnostics: Diagnostic[], triggerFile: string) {
+        protected reportConfigFileDiagnostics(configFileName: string, diagnostics: Diagnostic[], triggerFile: string) {
             if (!this.eventHandler) {
                 return;
             }
@@ -906,7 +904,7 @@ namespace ts.server {
             });
         }
 
-        private createAndAddConfiguredProject(configFileName: NormalizedPath, projectOptions: ProjectOptions, configFileErrors: Diagnostic[], clientFileName?: string) {
+        protected createAndAddConfiguredProject(configFileName: NormalizedPath, projectOptions: ProjectOptions, configFileErrors: Diagnostic[], clientFileName?: string) {
             const sizeLimitExceeded = this.exceededTotalSizeLimitForNonTsFiles(projectOptions.compilerOptions, projectOptions.files, fileNamePropertyReader);
             const project = new ConfiguredProject(
                 configFileName,
@@ -931,13 +929,13 @@ namespace ts.server {
             return project;
         }
 
-        private watchConfigDirectoryForProject(project: ConfiguredProject, options: ProjectOptions): void {
+        protected watchConfigDirectoryForProject(project: ConfiguredProject, options: ProjectOptions): void {
             if (!options.configHasFilesProperty) {
                 project.watchConfigDirectory((project, path) => this.onSourceFileInDirectoryChangedForConfiguredProject(project, path));
             }
         }
 
-        private addFilesToProjectAndUpdateGraph<T>(project: ConfiguredProject | ExternalProject, files: T[], propertyReader: FilePropertyReader<T>, clientFileName: string, typeAcquisition: TypeAcquisition, configFileErrors: Diagnostic[]): void {
+        protected addFilesToProjectAndUpdateGraph<T>(project: ConfiguredProject | ExternalProject, files: T[], propertyReader: FilePropertyReader<T>, clientFileName: string, typeAcquisition: TypeAcquisition, configFileErrors: Diagnostic[]): void {
             let errors: Diagnostic[];
             for (const f of files) {
                 const rootFilename = propertyReader.getFileName(f);
@@ -956,7 +954,7 @@ namespace ts.server {
             project.updateGraph();
         }
 
-        private openConfigFile(configFileName: NormalizedPath, clientFileName?: string): OpenConfigFileResult {
+        protected openConfigFile(configFileName: NormalizedPath, clientFileName?: string): OpenConfigFileResult {
             const conversionResult = this.convertConfigFileContentToProjectOptions(configFileName);
             const projectOptions: ProjectOptions = conversionResult.success
                 ? conversionResult.projectOptions
@@ -969,7 +967,7 @@ namespace ts.server {
             };
         }
 
-        private updateNonInferredProject<T>(project: ExternalProject | ConfiguredProject, newUncheckedFiles: T[], propertyReader: FilePropertyReader<T>, newOptions: CompilerOptions, newTypeAcquisition: TypeAcquisition, compileOnSave: boolean, configFileErrors: Diagnostic[]) {
+        protected updateNonInferredProject<T>(project: ExternalProject | ConfiguredProject, newUncheckedFiles: T[], propertyReader: FilePropertyReader<T>, newOptions: CompilerOptions, newTypeAcquisition: TypeAcquisition, compileOnSave: boolean, configFileErrors: Diagnostic[]) {
             const oldRootScriptInfos = project.getRootScriptInfos();
             const newRootScriptInfos: ScriptInfo[] = [];
             const newRootScriptInfoMap: NormalizedPathMap<ScriptInfo> = createNormalizedPathMap<ScriptInfo>();
@@ -1043,7 +1041,7 @@ namespace ts.server {
             project.updateGraph();
         }
 
-        private updateConfiguredProject(project: ConfiguredProject) {
+        protected updateConfiguredProject(project: ConfiguredProject) {
             if (!this.host.fileExists(project.getConfigFilePath())) {
                 this.logger.info("Config file deleted");
                 this.removeProject(project);
@@ -1154,7 +1152,6 @@ namespace ts.server {
         getScriptInfoForPath(fileName: Path) {
             return this.filenameToScriptInfo.get(fileName);
         }
-
 
         setHostConfiguration(args: protocol.ConfigureRequestArguments) {
             if (args.file) {
@@ -1278,7 +1275,7 @@ namespace ts.server {
             this.printProjects();
         }
 
-        private collectChanges(lastKnownProjectVersions: protocol.ProjectVersionInfo[], currentProjects: Project[], result: ProjectFilesWithTSDiagnostics[]): void {
+        protected collectChanges(lastKnownProjectVersions: protocol.ProjectVersionInfo[], currentProjects: Project[], result: ProjectFilesWithTSDiagnostics[]): void {
             for (const proj of currentProjects) {
                 const knownProject = forEach(lastKnownProjectVersions, p => p.projectName === proj.getProjectName() && p);
                 result.push(proj.getChangesSinceVersion(knownProject && knownProject.version));
@@ -1338,7 +1335,7 @@ namespace ts.server {
             }
         }
 
-        private closeConfiguredProject(configFile: NormalizedPath): void {
+        protected closeConfiguredProject(configFile: NormalizedPath): void {
             const configuredProject = this.findConfiguredProjectByProjectName(configFile);
             if (configuredProject && configuredProject.deleteOpenRef() === 0) {
                 this.removeProject(configuredProject);

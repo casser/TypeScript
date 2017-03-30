@@ -303,7 +303,6 @@ namespace ts.server {
                     cancellationToken,
                     useSingleInferredProject,
                     typingsInstaller || nullTypingsInstaller,
-                    Buffer.byteLength,
                     canUseEvents
                 );
 
@@ -562,6 +561,7 @@ namespace ts.server {
         const currentDrive = extractWatchDirectoryCacheKey(sys.resolvePath(sys.getCurrentDirectory()), /*currentDriveKey*/ undefined);
         const statusCache = createMap<boolean>();
         const originalWatchDirectory = sys.watchDirectory;
+        
         sys.watchDirectory = function (path: string, callback: DirectoryWatcherCallback, recursive?: boolean): FileWatcher {
             const cacheKey = extractWatchDirectoryCacheKey(path, currentDrive);
             let status = cacheKey && statusCache.get(cacheKey);
@@ -606,6 +606,7 @@ namespace ts.server {
     }
 
     // Override sys.write because fs.writeSync is not reliable on Node 4
+    sys.byteLength = Buffer.byteLength;
     sys.write = (s: string) => writeMessage(new Buffer(s, "utf8"));
     sys.watchFile = (fileName, callback) => {
         const watchedFile = pollingWatchedFileSet.addFile(fileName, callback);
