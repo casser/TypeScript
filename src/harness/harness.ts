@@ -172,7 +172,7 @@ namespace Utils {
                     assert.isFalse(child.pos < currentPos, "child.pos < currentPos");
                     currentPos = child.end;
                 },
-                (array: ts.NodeArray<ts.Node>) => {
+                array => {
                     assert.isFalse(array.pos < node.pos, "array.pos < node.pos");
                     assert.isFalse(array.end > node.end, "array.end > node.end");
                     assert.isFalse(array.pos < currentPos, "array.pos < currentPos");
@@ -191,7 +191,7 @@ namespace Utils {
             for (const childName in node) {
                 if (childName === "parent" || childName === "nextContainer" || childName === "modifiers" || childName === "externalModuleIndicator" ||
                     // for now ignore jsdoc comments
-                    childName === "jsDocComment") {
+                    childName === "jsDocComment" || childName === "checkJsDirective") {
                     continue;
                 }
                 const child = (<any>node)[childName];
@@ -383,7 +383,7 @@ namespace Utils {
 
                 assertStructuralEquals(child1, child2);
             },
-            (array1: ts.NodeArray<ts.Node>) => {
+            array1 => {
                 const childName = findChildName(node1, array1);
                 const array2: ts.NodeArray<ts.Node> = (<any>node2)[childName];
 
@@ -857,6 +857,7 @@ namespace Harness {
 
         export function getDefaultLibFileName(options: ts.CompilerOptions): string {
             switch (options.target) {
+                case ts.ScriptTarget.ESNext:
                 case ts.ScriptTarget.ES2017:
                     return "lib.es2017.d.ts";
                 case ts.ScriptTarget.ES2016:
@@ -1797,7 +1798,7 @@ namespace Harness {
                     if (currentFileContent === undefined) {
                         currentFileContent = "";
                     }
-                    else {
+                    else if (currentFileContent !== "") {
                         // End-of-line
                         currentFileContent = currentFileContent + "\n";
                     }
@@ -1933,7 +1934,7 @@ namespace Harness {
                 }
 
                 const parentDirectory = IO.directoryName(dirName);
-                if (parentDirectory != "") {
+                if (parentDirectory !== "") {
                     createDirectoryStructure(parentDirectory);
                 }
                 IO.createDirectory(dirName);
@@ -1983,5 +1984,5 @@ namespace Harness {
         return { unitName: libFile, content: io.readFile(libFile) };
     }
 
-    if (Error) (<any>Error).stackTraceLimit = 1;
+    if (Error) (<any>Error).stackTraceLimit = 100;
 }

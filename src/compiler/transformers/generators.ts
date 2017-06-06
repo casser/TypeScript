@@ -293,8 +293,7 @@ namespace ts {
         return transformSourceFile;
 
         function transformSourceFile(node: SourceFile) {
-            if (isDeclarationFile(node)
-                || (node.transformFlags & TransformFlags.ContainsGenerator) === 0) {
+            if (node.isDeclarationFile || (node.transformFlags & TransformFlags.ContainsGenerator) === 0) {
                 return node;
             }
 
@@ -587,7 +586,7 @@ namespace ts {
             // Build the generator
             resumeLexicalEnvironment();
 
-            const statementOffset = addPrologueDirectives(statements, body.statements, /*ensureUseStrict*/ false, visitor);
+            const statementOffset = addPrologue(statements, body.statements, /*ensureUseStrict*/ false, visitor);
 
             transformAndEmitStatements(body.statements, statementOffset);
 
@@ -939,7 +938,10 @@ namespace ts {
             const resumeLabel = defineLabel();
             const expression = visitNode(node.expression, visitor, isExpression);
             if (node.asteriskToken) {
-                emitYieldStar(createValuesHelper(context, expression, /*location*/ node), /*location*/ node);
+                const iterator = (getEmitFlags(node.expression) & EmitFlags.Iterator) === 0
+                    ? createValuesHelper(context, expression, /*location*/ node)
+                    : expression;
+                emitYieldStar(iterator, /*location*/ node);
             }
             else {
                 emitYield(expression, /*location*/ node);
@@ -1478,7 +1480,7 @@ namespace ts {
             }
 
             const initializer = node.initializer;
-            if (isVariableDeclarationList(initializer)) {
+            if (initializer && isVariableDeclarationList(initializer)) {
                 for (const variable of initializer.declarations) {
                     hoistVariableDeclaration(<Identifier>variable.name);
                 }

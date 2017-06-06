@@ -14,7 +14,9 @@ namespace ts {
 
         describe("printFile", () => {
             const printsCorrectly = makePrintsCorrectly("printsFileCorrectly");
-            const sourceFile = createSourceFile("source.ts", `
+            // Avoid eagerly creating the sourceFile so that `createSourceFile` doesn't run unless one of these tests is run.
+            let sourceFile: SourceFile;
+            before(() => sourceFile = createSourceFile("source.ts", `
                 interface A<T> {
                     // comment1
                     readonly prop?: T;
@@ -48,15 +50,18 @@ namespace ts {
 
                 // comment10
                 function functionWithDefaultArgValue(argument: string = "defaultValue"): void { }
-            `, ScriptTarget.ES2015);
-
+            `, ScriptTarget.ES2015));
             printsCorrectly("default", {}, printer => printer.printFile(sourceFile));
             printsCorrectly("removeComments", { removeComments: true }, printer => printer.printFile(sourceFile));
+
+            // github #14948
+            printsCorrectly("templateLiteral", {}, printer => printer.printFile(createSourceFile("source.ts", "let greeting = `Hi ${name}, how are you?`;", ScriptTarget.ES2017)));
         });
 
         describe("printBundle", () => {
             const printsCorrectly = makePrintsCorrectly("printsBundleCorrectly");
-            const bundle = createBundle([
+            let bundle: Bundle;
+            before(() => bundle = createBundle([
                 createSourceFile("a.ts", `
                     /*! [a.ts] */
 
@@ -69,14 +74,16 @@ namespace ts {
                     // comment1
                     const b = 2;
                 `, ScriptTarget.ES2015)
-            ]);
+            ]));
             printsCorrectly("default", {}, printer => printer.printBundle(bundle));
             printsCorrectly("removeComments", { removeComments: true }, printer => printer.printBundle(bundle));
         });
 
         describe("printNode", () => {
             const printsCorrectly = makePrintsCorrectly("printsNodeCorrectly");
-            const sourceFile = createSourceFile("source.ts", "", ScriptTarget.ES2015);
+            let sourceFile: SourceFile;
+            before(() => sourceFile = createSourceFile("source.ts", "", ScriptTarget.ES2015));
+            // tslint:disable boolean-trivia
             const syntheticNode = createClassDeclaration(
                 undefined,
                 undefined,
@@ -94,7 +101,43 @@ namespace ts {
                     )
                 ])
             );
+
+            // https://github.com/Microsoft/TypeScript/issues/15971
+            const classWithOptionalMethodAndProperty = createClassDeclaration(
+                undefined,
+                /* modifiers */ createNodeArray([createToken(SyntaxKind.DeclareKeyword)]),
+                /* name      */ createIdentifier("X"),
+                undefined,
+                undefined,
+                createNodeArray([
+                    createMethod(
+                        undefined,
+                        undefined,
+                        undefined,
+                        /* name          */ createIdentifier("method"),
+                        /* questionToken */ createToken(SyntaxKind.QuestionToken),
+                        undefined,
+                        undefined,
+                        /* type          */ createKeywordTypeNode(SyntaxKind.VoidKeyword),
+                        undefined
+                    ),
+                    createProperty(
+                        undefined,
+                        undefined,
+                        /* name          */ createIdentifier("property"),
+                        /* questionToken */ createToken(SyntaxKind.QuestionToken),
+                        /* type          */ createKeywordTypeNode(SyntaxKind.StringKeyword),
+                        undefined
+                    ),
+                ])
+            );
+
+            // tslint:enable boolean-trivia
             printsCorrectly("class", {}, printer => printer.printNode(EmitHint.Unspecified, syntheticNode, sourceFile));
+
+            printsCorrectly("namespaceExportDeclaration", {}, printer => printer.printNode(EmitHint.Unspecified, createNamespaceExportDeclaration("B"), sourceFile));
+
+            printsCorrectly("classWithOptionalMethodAndProperty", {}, printer => printer.printNode(EmitHint.Unspecified, classWithOptionalMethodAndProperty, sourceFile));
         });
     });
 }
