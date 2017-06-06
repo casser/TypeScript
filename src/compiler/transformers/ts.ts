@@ -7,7 +7,7 @@ namespace ts {
     /**
      * Indicates whether to emit type metadata in the new format.
      */
-    const USE_NEW_TYPE_METADATA_FORMAT = false;
+    const USE_NEW_TYPE_METADATA_FORMAT = true;
 
     const enum TypeScriptSubstitutionFlags {
         /** Enables substitutions for decorated classes. */
