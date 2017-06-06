@@ -41,6 +41,7 @@ namespace ts {
         realpath?(path: string): string;
         /*@internal*/ getEnvironmentVariable(name: string): string;
         /*@internal*/ tryEnableSourceMapsForHost?(): void;
+        /*@internal*/ debugMode?: boolean;
         setTimeout?(callback: (...args: any[]) => void, ms: number, ...args: any[]): any;
         clearTimeout?(timeoutId: any): void;
     }
@@ -54,10 +55,10 @@ namespace ts {
         referenceCount: number;
     }
 
-    declare var require: any;
-    declare var process: any;
-    declare var global: any;
-    declare var __filename: string;
+    declare const require: any;
+    declare const process: any;
+    declare const global: any;
+    declare const __filename: string;
 
     export function getNodeMajorVersion() {
         if (typeof process === "undefined") {
@@ -74,7 +75,7 @@ namespace ts {
         return parseInt(version.substring(1, dot));
     }
 
-    declare var ChakraHost: {
+    declare const ChakraHost: {
         args: string[];
         currentDirectory: string;
         executingFile: string;
@@ -232,7 +233,7 @@ namespace ts {
 
                 try {
                     fd = _fs.openSync(fileName, "w");
-                    _fs.writeSync(fd, data, undefined, "utf8");
+                    _fs.writeSync(fd, data, /*position*/ undefined, "utf8");
                 }
                 finally {
                     if (fd !== undefined) {
@@ -368,7 +369,7 @@ namespace ts {
                             if (eventName === "rename") {
                                 // When deleting a file, the passed baseFileName is null
                                 callback(!relativeFileName ? relativeFileName : normalizePath(combinePaths(directoryName, relativeFileName)));
-                            };
+                            }
                         }
                     );
                 },
@@ -428,6 +429,7 @@ namespace ts {
                 realpath(path: string): string {
                     return _fs.realpathSync(path);
                 },
+                debugMode: some(<string[]>process.execArgv, arg => /^--(inspect|debug)(-brk)?(=\d+)?$/i.test(arg)),
                 tryEnableSourceMapsForHost() {
                     try {
                         require("source-map-support").install();
@@ -516,5 +518,8 @@ namespace ts {
         Debug.currentAssertionLevel = /^development$/i.test(sys.getEnvironmentVariable("NODE_ENV"))
             ? AssertionLevel.Normal
             : AssertionLevel.None;
+    }
+    if (sys && sys.debugMode) {
+        Debug.isDebugging = true;
     }
 }
