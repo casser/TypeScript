@@ -25,7 +25,7 @@ namespace ts.server {
                     result.jsx += 1;
                     break;
                 case ScriptKind.TS:
-                    fileExtensionIs(info.fileName, ".d.ts")
+                    fileExtensionIs(info.fileName, Extension.Dts)
                         ? result.dts += 1
                         : result.ts += 1;
                     break;
@@ -116,7 +116,7 @@ namespace ts.server {
 
         public languageServiceEnabled = true;
 
-        protected readonly lsHost: LSHost;
+        protected lsHost: LSHost;
 
         builder: Builder;
         /**
@@ -216,7 +216,14 @@ namespace ts.server {
             }
         }
 
-        getProjectErrors() {
+        /**
+         * Get the errors that dont have any file name associated
+         */
+        getGlobalProjectErrors() {
+            return filter(this.projectErrors, diagnostic => !diagnostic.file);
+        }
+
+        getAllProjectErrors() {
             return this.projectErrors;
         }
 
@@ -297,9 +304,15 @@ namespace ts.server {
             this.rootFiles = undefined;
             this.rootFilesMap = undefined;
             this.program = undefined;
+            this.builder = undefined;
+            this.cachedUnresolvedImportsPerFile = undefined;
+            this.projectErrors = undefined;
+            this.lsHost.dispose();
+            this.lsHost = undefined;
 
             // signal language service to release source files acquired from document registry
             this.languageService.dispose();
+            this.languageService = undefined;
         }
 
         getCompilerOptions() {
@@ -357,7 +370,7 @@ namespace ts.server {
             return this.getLanguageService().getEmitOutput(info.fileName, emitOnlyDtsFiles);
         }
 
-        getFileNames(excludeFilesFromExternalLibraries?: boolean) {
+        getFileNames(excludeFilesFromExternalLibraries?: boolean, excludeConfigFiles?: boolean) {
             if (!this.program) {
                 return [];
             }
@@ -380,7 +393,37 @@ namespace ts.server {
                 }
                 result.push(asNormalizedPath(f.fileName));
             }
+            if (!excludeConfigFiles) {
+                const configFile = this.program.getCompilerOptions().configFile;
+                if (configFile) {
+                    result.push(asNormalizedPath(configFile.fileName));
+                    if (configFile.extendedSourceFiles) {
+                        for (const f of configFile.extendedSourceFiles) {
+                            result.push(asNormalizedPath(f));
+                        }
+                    }
+                }
+            }
             return result;
+        }
+
+        hasConfigFile(configFilePath: NormalizedPath) {
+            if (this.program && this.languageServiceEnabled) {
+                const configFile = this.program.getCompilerOptions().configFile;
+                if (configFile) {
+                    if (configFilePath === asNormalizedPath(configFile.fileName)) {
+                        return true;
+                    }
+                    if (configFile.extendedSourceFiles) {
+                        for (const f of configFile.extendedSourceFiles) {
+                            if (configFilePath === asNormalizedPath(f)) {
+                                return true;
+                            }
+                        }
+                    }
+                }
+            }
+            return false;
         }
 
         getAllEmittableFiles() {
@@ -657,7 +700,7 @@ namespace ts.server {
             if (this.lastReportedFileNames && lastKnownVersion === this.lastReportedVersion) {
                 // if current structure version is the same - return info without any changes
                 if (this.projectStructureVersion === this.lastReportedVersion && !updatedFileNames) {
-                    return { info, projectErrors: this.projectErrors };
+                    return { info, projectErrors: this.getGlobalProjectErrors() };
                 }
                 // compute and return the difference
                 const lastReportedFileNames = this.lastReportedFileNames;
@@ -679,14 +722,14 @@ namespace ts.server {
                 });
                 this.lastReportedFileNames = currentFiles;
                 this.lastReportedVersion = this.projectStructureVersion;
-                return { info, changes: { added, removed, updated }, projectErrors: this.projectErrors };
+                return { info, changes: { added, removed, updated }, projectErrors: this.getGlobalProjectErrors() };
             }
             else {
                 // unknown version - return everything
                 const projectFileNames = this.getFileNames();
                 this.lastReportedFileNames = arrayToMap(projectFileNames, x => x);
                 this.lastReportedVersion = this.projectStructureVersion;
-                return { info, files: projectFileNames, projectErrors: this.projectErrors };
+                return { info, files: projectFileNames, projectErrors: this.getGlobalProjectErrors() };
             }
         }
 
@@ -776,7 +819,7 @@ namespace ts.server {
 
         setCompilerOptions(options?: CompilerOptions) {
             // Avoid manipulating the given options directly
-            const newOptions = options ? clone(options) : this.getCompilerOptions();
+            const newOptions = options ? cloneCompilerOptions(options) : this.getCompilerOptions();
             if (!newOptions) {
                 return;
             }
@@ -1043,6 +1086,7 @@ namespace ts.server {
 
             if (this.projectFileWatcher) {
                 this.projectFileWatcher.close();
+                this.projectFileWatcher = undefined;
             }
 
             if (this.typeRootsWatchers) {
