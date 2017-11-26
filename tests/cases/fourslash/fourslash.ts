@@ -114,8 +114,11 @@ declare namespace FourSlashInterface {
         markerNames(): string[];
         marker(name?: string): Marker;
         ranges(): Range[];
+        spans(): Array<{ start: number, length: number }>;
         rangesByText(): ts.Map<Range[]>;
         markerByName(s: string): Marker;
+        symbolsInScope(range: Range): any[];
+        setTypesRegistry(map: { [key: string]: void }): void;
     }
     class goTo {
         marker(name?: string | Marker): void;
@@ -129,6 +132,7 @@ declare namespace FourSlashInterface {
         position(position: number, fileName?: string): any;
         file(index: number, content?: string, scriptKindName?: string): any;
         file(name: string, content?: string, scriptKindName?: string): any;
+        select(startMarker: string, endMarker: string): void;
     }
     class verifyNegatable {
         private negative;
@@ -137,7 +141,15 @@ declare namespace FourSlashInterface {
         allowedConstructorParameterKeywords: string[];
         constructor(negative?: boolean);
         completionListCount(expectedCount: number): void;
-        completionListContains(symbol: string, text?: string, documentation?: string, kind?: string, spanIndex?: number): void;
+        completionListContains(
+            entryId: string | { name: string, source?: string },
+            text?: string,
+            documentation?: string,
+            kind?: string,
+            spanIndex?: number,
+            hasAction?: boolean,
+            options?: { includeExternalModuleExports?: boolean, sourceDisplay?: string, allowDuplicate?: boolean },
+        ): void;
         completionListItemsCountIsGreaterThan(count: number): void;
         completionListIsEmpty(): void;
         completionListContainsClassElementKeywords(): void;
@@ -151,15 +163,45 @@ declare namespace FourSlashInterface {
         typeDefinitionCountIs(expectedCount: number): void;
         implementationListIsEmpty(): void;
         isValidBraceCompletionAtPosition(openingBrace?: string): void;
-        codeFixAvailable(): void;
+        isInCommentAtPosition(onlyMultiLineDiverges?: boolean): void;
+        codeFix(options: {
+            description: string,
+            newFileContent?: string,
+            newRangeContent?: string,
+            errorCode?: number,
+            index?: number,
+        });
+        codeFixAvailable(options: Array<{ description: string, actions: Array<{ type: string, data: {} }> }>): void;
         applicableRefactorAvailableAtMarker(markerName: string): void;
         codeFixDiagnosticsAvailableAtMarkers(markerNames: string[], diagnosticCode?: number): void;
         applicableRefactorAvailableForRange(): void;
+
+        refactorAvailable(name: string, actionName?: string): void;
+        refactor(options: {
+            name: string;
+            actionName: string;
+            refactors: any[];
+        }): void;
     }
     class verify extends verifyNegatable {
         assertHasRanges(ranges: Range[]): void;
         caretAtMarker(markerName?: string): void;
-        completionsAt(markerName: string, completions: string[]): void;
+        completionsAt(markerName: string, completions: string[], options?: { isNewIdentifierLocation?: boolean }): void;
+        completionsAndDetailsAt(
+            markerName: string,
+            completions: {
+                excludes?: ReadonlyArray<string>,
+                //TODO: better type
+                entries: ReadonlyArray<{ entry: any, details: any }>,
+            },
+        ): void; //TODO: better type
+        applyCodeActionFromCompletion(markerName: string, options: {
+            name: string,
+            source?: string,
+            description: string,
+            newFileContent?: string,
+            newRangeContent?: string,
+        });
         indentationIs(numberOfSpaces: number): void;
         indentationAtPositionIs(fileName: string, position: number, numberOfSpaces: number, indentStyle?: ts.IndentStyle, baseIndentSize?: number): void;
         textAtCaretIs(text: string): void;
@@ -180,6 +222,7 @@ declare namespace FourSlashInterface {
          * `verify.goToDefinition("a", ["b", "bb"]);` verifies that "a" has multiple definitions available.
          */
         goToDefinition(startMarkerNames: string | string[], endMarkerNames: string | string[]): void;
+        goToDefinition(startMarkerNames: string | string[], endMarkerNames: string | string[], range: Range): void;
         /** Performs `goToDefinition` for each pair. */
         goToDefinition(startsAndEnds: [string | string[], string | string[]][]): void;
         /** Performs `goToDefinition` on each key and value. */
@@ -192,6 +235,7 @@ declare namespace FourSlashInterface {
         verifyGetEmitOutputContentsForCurrentFile(expected: ts.OutputFile[]): void;
         noReferences(markerNameOrRange?: string | Range): void;
         symbolAtLocation(startRange: Range, ...declarationRanges: Range[]): void;
+        typeOfSymbolAtLocation(range: Range, symbol: any, expected: string): void;
         /**
          * @deprecated, prefer 'referenceGroups'
          * Like `referencesAre`, but goes to `start` first.
@@ -236,16 +280,17 @@ declare namespace FourSlashInterface {
         todoCommentsInCurrentFile(descriptors: string[]): void;
         matchingBracePositionInCurrentFile(bracePosition: number, expectedMatchPosition: number): void;
         noMatchingBracePositionInCurrentFile(bracePosition: number): void;
-        DocCommentTemplate(expectedText: string, expectedOffset: number, empty?: boolean): void;
-        noDocCommentTemplate(): void;
+        docCommentTemplateAt(markerName: string | FourSlashInterface.Marker, expectedOffset: number, expectedText: string): void;
+        noDocCommentTemplateAt(markerName: string | FourSlashInterface.Marker): void;
         rangeAfterCodeFix(expectedText: string, includeWhiteSpace?: boolean, errorCode?: number, index?: number): void;
         fileAfterApplyingRefactorAtMarker(markerName: string, expectedContent: string, refactorNameToApply: string, actionName: string, formattingOptions?: FormatCodeOptions): void;
         rangeIs(expectedText: string, includeWhiteSpace?: boolean): void;
         fileAfterApplyingRefactorAtMarker(markerName: string, expectedContent: string, refactorNameToApply: string, formattingOptions?: FormatCodeOptions): void;
+        getAndApplyCodeFix(errorCode?: number, index?: number): void;
         importFixAtPosition(expectedTextArray: string[], errorCode?: number): void;
 
-        navigationBar(json: any): void;
-        navigationTree(json: any): void;
+        navigationBar(json: any, options?: { checkSpans?: boolean }): void;
+        navigationTree(json: any, options?: { checkSpans?: boolean }): void;
         navigationItemsListCount(count: number, searchValue: string, matchKind?: string, fileName?: string): void;
         navigationItemsListContains(name: string, kind: string, searchValue: string, matchKind: string, fileName?: string, parentName?: string): void;
         occurrencesAtPositionContains(range: Range, isWriteAccess?: boolean): void;
@@ -253,7 +298,7 @@ declare namespace FourSlashInterface {
         rangesAreDocumentHighlights(ranges?: Range[]): void;
         rangesWithSameTextAreDocumentHighlights(): void;
         documentHighlightsOf(startRange: Range, ranges: Range[]): void;
-        completionEntryDetailIs(entryName: string, text: string, documentation?: string, kind?: string): void;
+        completionEntryDetailIs(entryName: string, text: string, documentation?: string, kind?: string, tags?: ts.JSDocTagInfo[]): void;
         /**
          * This method *requires* a contiguous, complete, and ordered stream of classifications for a file.
          */
@@ -303,6 +348,8 @@ declare namespace FourSlashInterface {
         moveLeft(count?: number): void;
         enableFormatting(): void;
         disableFormatting(): void;
+
+        applyRefactor(options: { refactorName: string, actionName: string, actionDescription: string, newContent: string }): void;
     }
     class debug {
         printCurrentParameterHelp(): void;
@@ -311,7 +358,7 @@ declare namespace FourSlashInterface {
         printCurrentFileStateWithoutCaret(): void;
         printCurrentQuickInfo(): void;
         printCurrentSignatureHelp(): void;
-        printCompletionListMembers(): void;
+        printCompletionListMembers(options?: { includeExternalModuleExports: boolean }): void;
         printAvailableCodeFixes(): void;
         printBreakpointLocation(pos: number): void;
         printBreakpointAtCurrentLocation(): void;
@@ -329,7 +376,7 @@ declare namespace FourSlashInterface {
         setFormatOptions(options: FormatCodeOptions): any;
         selection(startMarker: string, endMarker: string): void;
         onType(posMarker: string, key: string): void;
-        setOption(name: string, value: number | string | boolean): void;
+        setOption(name: keyof FormatCodeOptions, value: number | string | boolean): void;
     }
     class cancellation {
         resetCancelled(): void;
