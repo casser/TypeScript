@@ -156,7 +156,10 @@ class C8 {
 >a : number
 
     "b": number;
+>"b" : number
+
     0: number;
+>0 : number
 }
 
 // No strict initialization checks for abstract members
@@ -221,6 +224,28 @@ class C10 {
 >this.c : number | undefined
 >this : this
 >c : number | undefined
+    }
+}
+
+// Property is considered initialized by type any even though value could be undefined
+
+declare function someValue(): any;
+>someValue : () => any
+
+class C11 {
+>C11 : C11
+
+    a: number;
+>a : number
+
+    constructor() {
+        this.a = someValue();
+>this.a = someValue() : any
+>this.a : number
+>this : this
+>a : number
+>someValue() : any
+>someValue : () => any
     }
 }
 

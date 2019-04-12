@@ -142,7 +142,10 @@ class C8 {
 >a : Symbol(C8.a, Decl(strictPropertyInitialization.ts, 69, 10))
 
     "b": number;
+>"b" : Symbol(C8["b"], Decl(strictPropertyInitialization.ts, 70, 14))
+
     0: number;
+>0 : Symbol(C8[0], Decl(strictPropertyInitialization.ts, 71, 16))
 }
 
 // No strict initialization checks for abstract members
@@ -204,6 +207,26 @@ class C10 {
 >this.c : Symbol(C10.c, Decl(strictPropertyInitialization.ts, 89, 14))
 >this : Symbol(C10, Decl(strictPropertyInitialization.ts, 82, 1))
 >c : Symbol(C10.c, Decl(strictPropertyInitialization.ts, 89, 14))
+    }
+}
+
+// Property is considered initialized by type any even though value could be undefined
+
+declare function someValue(): any;
+>someValue : Symbol(someValue, Decl(strictPropertyInitialization.ts, 97, 1))
+
+class C11 {
+>C11 : Symbol(C11, Decl(strictPropertyInitialization.ts, 101, 34))
+
+    a: number;
+>a : Symbol(C11.a, Decl(strictPropertyInitialization.ts, 103, 11))
+
+    constructor() {
+        this.a = someValue();
+>this.a : Symbol(C11.a, Decl(strictPropertyInitialization.ts, 103, 11))
+>this : Symbol(C11, Decl(strictPropertyInitialization.ts, 101, 34))
+>a : Symbol(C11.a, Decl(strictPropertyInitialization.ts, 103, 11))
+>someValue : Symbol(someValue, Decl(strictPropertyInitialization.ts, 97, 1))
     }
 }
 

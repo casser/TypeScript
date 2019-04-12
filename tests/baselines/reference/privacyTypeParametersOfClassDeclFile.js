@@ -383,3 +383,56 @@ var privateModule;
         return privateClassWithPublicTypeParametersWithoutExtends;
     }());
 })(privateModule || (privateModule = {}));
+
+
+//// [privacyTypeParametersOfClassDeclFile.d.ts]
+declare class privateClass {
+}
+export declare class publicClass {
+}
+export declare class publicClassWithPrivateTypeParameters<T extends privateClass> {
+    myMethod(val: T): T;
+}
+export declare class publicClassWithPublicTypeParameters<T extends publicClass> {
+    myMethod(val: T): T;
+}
+export declare class publicClassWithPublicTypeParametersWithoutExtends<T> {
+    myMethod(val: T): T;
+}
+export declare class publicClassWithTypeParametersFromPrivateModule<T extends privateModule.publicClassInPrivateModule> {
+    myMethod(val: T): T;
+}
+export declare module publicModule {
+    class privateClassInPublicModule {
+    }
+    class publicClassInPublicModule {
+    }
+    class publicClassWithPrivateTypeParameters<T extends privateClassInPublicModule> {
+        myMethod(val: T): T;
+    }
+    class publicClassWithPublicTypeParameters<T extends publicClassInPublicModule> {
+        myMethod(val: T): T;
+    }
+    class publicClassWithPublicTypeParametersWithoutExtends<T> {
+        myMethod(val: T): T;
+    }
+    class publicClassWithTypeParametersFromPrivateModule<T extends privateModule.publicClassInPrivateModule> {
+        myMethod(val: T): T;
+    }
+}
+declare module privateModule {
+    class privateClassInPrivateModule {
+    }
+    class publicClassInPrivateModule {
+    }
+    class publicClassWithPrivateTypeParameters<T extends privateClassInPrivateModule> {
+        myMethod(val: T): T;
+    }
+    class publicClassWithPublicTypeParameters<T extends publicClassInPrivateModule> {
+        myMethod(val: T): T;
+    }
+    class publicClassWithPublicTypeParametersWithoutExtends<T> {
+        myMethod(val: T): T;
+    }
+}
+export {};
